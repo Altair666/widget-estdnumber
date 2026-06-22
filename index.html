@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Номера — ЕСТД</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f7f7;--surf:#FFF;--surf2:#f7f7f7;--surf3:#e5e5e5;
+  --brd:#DEDAD2;--brd2:#C4C0B6;
+  --tx:#18170F;--tx2:#6A6860;--tx3:#9E9C94;
+  --acc:#1E4ED8;--acc-bg:#EEF2FF;--acc-brd:#C7D2FE;
+  --grn:#0D6E4E;--grn-bg:#ECFDF5;--grn-brd:#A7F3D0;
+  --warn:#92400E;--warn-bg:#FFFBEB;--warn-brd:#FCD34D;
+  --red:#991B1B;--red-bg:#FEF2F2;--red-brd:#FECACA;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+  --r:4pt;--r2:4pt;
+}
+html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;color:var(--tx);background:var(--bg)}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto 1fr;height:100vh;overflow:hidden}
+.topbar{grid-column:2;grid-row:1;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:flex-end;justify-content:space-between;padding:0 12px 0 0}
+.tabbar{display:flex;align-items:flex-end}
+.tab-btn{font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);background:var(--surf2);border:1px solid var(--brd);border-bottom:1px solid var(--brd);border-radius:0;padding:6px 18px;cursor:pointer;transition:background .1s,color .1s;margin-bottom:-1px}
+.tab-btn:hover{background:var(--surf3);color:var(--tx)}
+.tab-btn.active{background:var(--bg);color:var(--tx);border-bottom-color:var(--bg);font-weight:700;z-index:2}
+.search-wrap{flex:1;position:relative;max-width:380px}
+.search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
+.search-input{width:100%;height:30px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 28px 0 30px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;transition:border-color .15s,background .15s}
+.search-input:focus{border-color:var(--acc);background:var(--surf)}
+.search-input::placeholder{color:var(--tx3)}
+.search-clear{position:absolute;right:19px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--tx3);display:none;background:none;border:none;padding:2px;line-height:1}
+.search-clear.on{display:flex}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
+.conn-dot.ok{background:var(--grn)}
+.conn-lbl{font-size:11px;color:var(--tx3)}
+.topbar-status{display:flex;align-items:center;gap:6px;align-self:center;padding:0}
+.ver-footer{position:fixed;right:10px;bottom:6px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
+
+/* ── SIDEBAR ── */
+.sidebar{grid-column:1;grid-row:1/-1;background:var(--surf);border-right:1px solid var(--brd);overflow-y:auto;padding:10px 0;display:flex;flex-direction:column;gap:0}
+.sb-section{margin-bottom:12px}
+.sb-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);padding:0 12px 5px}
+.sb-item{display:flex;align-items:center;gap:7px;padding:4px 12px;cursor:pointer;transition:background .1s}
+.sb-item:hover{background:var(--surf2)}
+.sb-item.active{background:var(--acc-bg)}
+.sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sb-name{font-size:12px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-code{font-family:var(--mono);font-size:10px;color:var(--tx3)}
+.sb-fav-code{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx);margin-left:3ch}
+.sb-divider{height:1px;background:var(--brd);margin:6px 12px}
+
+/* ── MAIN ── */
+.main{grid-column:2;grid-row:2;overflow-y:auto;padding:0;display:flex;flex-direction:column;gap:0}
+
+/* ── PANELS ── */
+.panel{background:var(--surf);border:1px solid var(--brd);border-radius:0;overflow:hidden}
+#pSearch>.panel:first-child,#pBrowse>.panel:first-child{border-top:none}
+#pBrowse>.panel:first-child>.ph,#pSearch>.panel:first-child>.ph{background:var(--bg)}
+.ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
+.ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
+.pb{padding:10px 12px}
+
+/* ── SEARCH RESULTS ── */
+.res-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);cursor:pointer;transition:background .1s;margin:0 -8px}
+.res-item:hover{background:var(--acc-bg)}
+.res-item.sel{background:var(--acc-bg);border-left:2px solid var(--acc);padding-left:6px}
+.res-dn{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:4pt;padding:2px 6px;flex-shrink:0;min-width:96px;text-align:center}
+.res-name{font-size:12px;color:var(--tx);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-kind{font-size:11px;color:var(--tx3);flex-shrink:0;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── REL TREE ── */
+.tree-root{display:flex;flex-direction:column;gap:2px}
+.tree-node{display:flex;align-items:center;gap:6px;padding:0 8px;height:30px;border-radius:var(--r);border:1px solid transparent;transition:background .1s,border-color .1s;box-sizing:border-box}
+.tree-node:hover{background:var(--surf2)}
+.tree-node.target{background:var(--acc-bg);border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-brd)}
+.tree-node.target:hover{background:var(--acc-bg)}
+.tree-node.current{background:var(--warn-bg);border-color:var(--warn-brd)}
+.tree-toggle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;background:transparent;color:var(--tx3);cursor:pointer;flex-shrink:0;padding:0;border-radius:4pt}
+.tree-toggle:hover{background:var(--brd);color:var(--tx)}
+.tree-toggle.empty{cursor:default;pointer-events:none}
+.tree-content{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer}
+.tree-count{font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:0 6px;line-height:14px;min-width:18px;text-align:center;flex-shrink:0}
+.tree-node.target .tree-count{background:var(--acc);color:#fff;border-color:var(--acc)}
+
+/* ── REL TREE — старые элементы для обратной совместимости ── */
+.rel-dn{font-family:var(--mono);font-size:11px;color:var(--tx);flex-shrink:0}
+.rel-nm{font-size:12px;color:var(--tx2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── ESTD BROWSER ── */
+.bc{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.bc-item{font-size:11px;color:var(--tx2);cursor:pointer;padding:2px 5px;border-radius:4pt;transition:background .1s}
+.bc-item:hover{background:var(--surf2)}
+.bc-item.cur{color:var(--tx);font-weight:500;cursor:default}
+.bc-sep{color:var(--tx3);font-size:11px}
+
+/* Путь выбора — шапка браузера */
+.browse-summary{padding:14px 16px;background:var(--surf);display:none;gap:16px;align-items:center;flex-direction:row}
+.browse-summary.on{display:flex}
+.bs-code{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--tx);line-height:1;flex-shrink:0;text-align:center;min-width:120px}
+.bs-path{flex:1;min-width:0}
+.bs-row{font-size:15px;color:var(--tx);line-height:1.4}
+
+/* Карточки классов — строки */
+.cls-list{display:flex;flex-direction:column;gap:4px}
+.cls-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
+.cls-row:hover{border-color:var(--brd2);background:var(--surf3)}
+.cls-row.sel{border-color:var(--acc);background:var(--acc-bg)}
+.cls-row-code{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--tx);flex-shrink:0;min-width:44px}
+.cls-row-name{font-size:13px;color:var(--tx);flex:1;line-height:1.3}
+
+/* Подуровни — чуть компактнее */
+.sub-list{display:flex;flex-direction:column;gap:3px}
+.sub-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--brd);border-radius:var(--r);cursor:pointer;background:var(--surf);transition:border-color .15s,background .15s}
+.sub-row:hover{border-color:var(--brd2);background:var(--surf3)}
+.sub-row.sel{border-color:var(--acc);background:var(--acc-bg)}
+.sub-row-code{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--tx);flex-shrink:0;min-width:56px}
+.sub-row-name{font-size:12px;color:var(--tx);flex:1;line-height:1.3}
+
+/* ── FORM ── */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx2)}
+.form-hint{font-size:10px;color:var(--tx3)}
+.form-input{height:32px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;transition:border-color .15s,background .15s;width:100%}
+.form-input:focus{border-color:var(--acc);background:var(--surf)}
+.form-input.err{border-color:var(--red)}
+.form-input::placeholder{color:var(--tx3)}
+.form-select{height:32px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;width:100%;cursor:pointer}
+.form-select:focus{border-color:var(--acc)}
+
+/* kind autocomplete */
+.ac-wrap{position:relative}
+.ac-drop{position:absolute;top:34px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:100;max-height:180px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.ac-drop.on{display:block}
+.ac-item{padding:6px 9px;cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:7px}
+.ac-item:hover,.ac-item.hov{background:var(--acc-bg)}
+.ac-code{font-family:var(--mono);font-size:10px;color:var(--acc);flex-shrink:0}
+.ac-name{font-size:11px;color:var(--tx);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* preview */
+.preview-row{display:flex;align-items:stretch;gap:10px;margin-bottom:10px}
+.preview-box{flex:1;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.preview-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)}
+.preview-val{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--tx)}
+.preview-val.ready{color:var(--acc)}
+.preview-box.next{background:var(--grn-bg);border-color:var(--grn-brd)}
+.preview-box.next .preview-lbl{color:var(--grn)}
+.preview-box.next .preview-val{color:var(--grn)}
+.err-msg{font-size:11px;color:var(--red);margin-top:2px;display:none}
+.err-msg.on{display:block}
+
+/* Formed number — input styled like name but green */
+.formed-num{font-family:var(--mono);background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn);font-weight:500;cursor:default}
+.formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
+
+.btn-add{display:flex;align-items:center;justify-content:center;gap:6px;background:#16b378;color:#fff;border:none;border-radius:var(--r);padding:9px 16px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s;width:100%}
+.btn-add:hover{opacity:.88}
+.btn-add:active{transform:scale(.98)}
+.btn-add:disabled{opacity:.35;cursor:not-allowed}
+.btn-sm{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);color:var(--tx2);font-size:11px;padding:3px 9px;cursor:pointer;font-family:inherit;transition:background .1s}
+.btn-sm:hover{background:var(--surf3)}
+.btn-sm:disabled{opacity:.3;cursor:default}
+
+/* ── EMPTY / MISC ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px 0;color:var(--tx3);font-size:12px;text-align:center}
+.tag{display:inline-flex;align-items:center;font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4pt}
+.tag-blue{background:var(--acc-bg);color:var(--acc)}
+.tag-green{background:var(--grn-bg);color:var(--grn)}
+.badge{font-size:10px;padding:1px 6px;border-radius:4pt;font-weight:500}
+.badge-level{background:var(--surf3);color:var(--tx2)}
+mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
+
+/* ── REGISTERED TABLE ── */
+.reg-table{width:100%;border-collapse:collapse;font-size:12px}
+.reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2)}
+.reg-table th.group-header{border-bottom:2px solid var(--brd2);padding-bottom:2px;text-align:center}
+.reg-table .sub-header th{font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;border-bottom:1px solid var(--brd);background:var(--surf2);text-align:center;white-space:nowrap}
+.reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
+.reg-table tr:last-child td{border-bottom:none}
+.reg-table tr:hover td{background:var(--surf2)}
+.reg-table td.reg-dn{vertical-align:middle}
+.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap}
+.reg-name{font-size:12px;color:var(--tx)}
+.reg-use-dn{font-family:var(--mono);font-size:11px;color:var(--tx3)}
+.reg-use-name{font-size:12px;color:var(--tx2)}
+.reg-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
+
+/* Inline edit */
+.cell-content{display:flex;align-items:center;justify-content:center;gap:6px;min-height:18px;line-height:1.4}
+.cell-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.cell-text.reg-use-dn{font-family:var(--mono);font-size:11px;color:var(--acc)}
+.cell-text.reg-use-name{font-size:12px;color:var(--tx2)}
+.cell-edit-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;border-radius:4pt;background:transparent;color:#E07B1F;cursor:pointer;flex-shrink:0;transition:all .1s;padding:0}
+.cell-edit-btn:hover{background:#FFF4E6;color:#C5651A;border-color:#F5D4A0}
+.cell-edit-btn.save{color:var(--grn)}
+.cell-edit-btn.save:hover{background:var(--grn-bg);color:var(--grn);border-color:var(--grn-brd)}
+.cell-edit-btn.save:disabled{opacity:.3;cursor:not-allowed;background:transparent;border-color:transparent}
+.cell-edit-btn.cancel{color:var(--red)}
+.cell-edit-btn.cancel:hover{background:var(--red-bg);color:var(--red);border-color:var(--red-brd)}
+.cell-edit-input{flex:1;height:22px;border:1px solid var(--acc);border-radius:4pt;padding:0 6px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;background:var(--surf);min-width:0;text-align:center}
+.cell-edit-input.mono{font-family:var(--mono);font-size:11px;color:var(--acc)}
+.cell-edit-wrap{position:relative;flex:1;min-width:0}
+.cell-edit-drop{position:absolute;top:24px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12);text-align:left;display:none}
+.cell-edit-drop.on{display:block}
+
+/* Reset td padding/alignment for editable cells to keep row heights uniform */
+.reg-table td.editable-cell{padding:4px 8px;vertical-align:middle}
+
+/* Author avatar */
+.reg-author{padding:6px 8px;text-align:center}
+.avatar{display:inline-flex;align-items:center;justify-content:center;width:26px;height:22px;border-radius:4pt;color:#fff;font-size:11px;font-weight:600;font-family:inherit;cursor:default;position:relative;user-select:none;margin:0 auto}
+.avatar[data-tooltip]:hover::after{
+  content:attr(data-tooltip);
+  position:absolute;
+  bottom:calc(100% + 6px);
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--tx);
+  color:#fff;
+  padding:6px 10px;
+  border-radius:var(--r);
+  font-size:11px;
+  font-weight:400;
+  white-space:pre;
+  z-index:1000;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  pointer-events:none;
+  text-align:left;
+  letter-spacing:0;
+}
+.avatar[data-tooltip]:hover::before{
+  content:'';
+  position:absolute;
+  bottom:calc(100% + 1px);
+  left:50%;
+  transform:translateX(-50%);
+  border:5px solid transparent;
+  border-top-color:var(--tx);
+  z-index:1000;
+  pointer-events:none;
+}
+
+/* ── BROWSER KIND SEARCH ── */
+.browser-search-wrap{padding:8px 12px;position:relative;background:var(--surf)}
+.browser-search-input{width:100%;height:30px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px 0 30px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;transition:border-color .15s}
+.browser-search-input:focus{border-color:var(--acc);background:var(--surf)}
+.browser-search-input::placeholder{color:var(--tx3)}
+.browser-search-icon{position:absolute;left:21px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:4pt}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="tabbar">
+    <button class="tab-btn active" id="tabBtnReg" onclick="switchTab('reg')">Регистрация номера</button>
+    <button class="tab-btn" id="tabBtnStruct" onclick="switchTab('structure')">Структура изделия</button>
+  </div>
+  <div class="topbar-status">
+    <div class="conn-dot" id="connDot"></div>
+    <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-section">
+    <div class="sb-lbl">⭐ Популярное</div>
+    <div id="favList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div></div>
+  </div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">
+    <div class="sb-lbl">🕐 Последние</div>
+    <div id="recentList"><div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main" id="main">
+
+  <!-- SEARCH MODE (вкладка «Структура изделия») -->
+  <div id="pSearch" style="display:none;flex-direction:column;gap:0">
+
+    <div class="panel">
+      <div class="ph"></div>
+      <div class="browser-search-wrap">
+        <svg class="browser-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
+        <button class="search-clear" id="searchClear" onclick="clearSearch()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel" id="pSearchResults">
+      <div class="ph">
+        <span class="ph-title" id="searchTitle">Результаты поиска</span>
+        <span class="tag tag-blue" id="searchCount"></span>
+      </div>
+      <div class="pb" id="searchBody"></div>
+    </div>
+
+    <div class="panel" id="pRel" style="display:none">
+      <div class="ph">
+        <span class="ph-title">Связи компонента</span>
+        <button class="btn-sm" onclick="closeRel()">✕ закрыть</button>
+      </div>
+      <div class="pb" id="relBody"></div>
+    </div>
+
+  </div>
+
+  <!-- BROWSE MODE -->
+  <div id="pBrowse" style="display:flex;flex-direction:column;gap:0">
+
+    <!-- ESTD browser -->
+    <div class="panel">
+      <div class="ph">
+        <span class="ph-title">Классификатор ЕСТД</span>
+        <div class="bc" id="bc"></div>
+      </div>
+      <!-- Поиск вида внутри браузера -->
+      <div class="browser-search-wrap">
+        <svg class="browser-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="browser-search-input" id="browserKindInput" placeholder="Поиск вида по коду или наименованию…" autocomplete="off" oninput="onBrowserKindInput()" onkeydown="onBrowserKindKey(event)">
+        <div class="ac-drop" id="browserKindDrop" style="top:32px;left:12px;right:12px"></div>
+      </div>
+      <div class="browse-summary" id="browseSummary">
+        <div class="bs-code" id="bsCode"></div>
+        <div class="bs-path" id="bsPath"></div>
+      </div>
+      <div class="pb" id="browseBody"></div>
+    </div>
+
+    <!-- ADD FORM -->
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Регистрация компонента</span></div>
+      <div class="pb">
+
+        <!-- form row: prefix + formed number + name -->
+        <div style="display:grid;grid-template-columns:90px 1fr 1.4fr;gap:10px;margin-bottom:10px">
+          <!-- org prefix combobox -->
+          <div class="form-group">
+            <label class="form-label">Префикс</label>
+            <input class="form-input" id="prefixInput" list="prefixList" value="ЛМАП" placeholder="ЛМАП" oninput="onPrefixInput()" autocomplete="off">
+            <datalist id="prefixList">
+              <option value="ЛМАП">
+              <option value="ЭЛМАП">
+            </datalist>
+          </div>
+          <!-- formed number (read-only, green styled) -->
+          <div class="form-group">
+            <label class="form-label">Формируемый номер</label>
+            <input class="form-input formed-num" id="prevDN" readonly value="—————.—————">
+          </div>
+          <!-- name -->
+          <div class="form-group">
+            <label class="form-label">Наименование компонента <span style="color:var(--red)">*</span></label>
+            <input class="form-input" id="nameInput" placeholder="Диод Д226А">
+          </div>
+        </div>
+
+        <!-- hint when no kind picked -->
+        <div id="kindPickHint" style="font-size:11px;color:var(--tx3);margin-bottom:10px;display:none">
+          Выберите вид в блоке «Классификатор ЕСТД» выше
+        </div>
+
+        <!-- primary_use -->
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">Первичное применение <span style="color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0">(необязательно)</span></label>
+          <div class="ac-wrap">
+            <input class="form-input" id="useInput" placeholder="Поиск сборочной единицы…" autocomplete="off" oninput="onUseInput()" onkeydown="onUseKey(event)">
+            <div class="ac-drop" id="useDrop"></div>
+          </div>
+          <span class="form-hint" id="useHint">Не выбрано</span>
+        </div>
+
+        <button class="btn-add" id="btnAdd" disabled onclick="addComponent()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Зарегистрировать номер
+        </button>
+
+      </div>
+    </div>
+
+    <!-- REGISTERED COMPONENTS for selected kind -->
+    <div class="panel" id="pRegistered" style="display:none">
+      <div class="ph">
+        <span class="ph-title">Зарегистрированные компоненты</span>
+        <span class="tag tag-blue" id="regCount"></span>
+      </div>
+      <div id="regBody"></div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<footer class="ver-footer">v0.1</footer>
+
+<script>
+/* ═══════════════════════════════════
+   STATE
+═══════════════════════════════════ */
+const S = {
+  activeTab: 'reg',  // 'reg' (Регистрация номера) | 'structure' (Структура изделия)
+  classifier: [],   // estd_classifier records
+  components: [],   // estd_components records
+  recent: [],
+  searchQ: '',
+  selResult: null,
+  // browse
+  browseLevel: null, // null=classes, code=drilled
+  browsePath: [],    // [{code,name,level}]
+  // form
+  selKind: null,     // {id, code, name}
+  selUse: null,      // {id, estd_number, name}
+  kindAcIdx: -1,
+  useAcIdx: -1,
+  browserKindAcIdx: -1,
+  // inline edit
+  editing: null, // { rowId: number, mode: 'ref'|'compName', selUse: ... }
+  relExpanded: null, // Set<id> — какие узлы дерева раскрыты
+  relRootId: null,   // id корня текущего дерева (для инвалидации при смене)
+  // lazy classifier
+  classifierMode: 'full',       // 'lazy' | 'full'
+  classifierLoadedParents: null, // Set<string> — какие parent_code уже загружены
+  classifierLoading: false,      // true пока грузится уровень
+  docId: null,       // id документа Grist
+  accessToken: null, // токен для доступа к API (SQL endpoint)
+  tokenBaseUrl: null,// базовый URL для API с токеном
+};
+
+/* Уровни классификатора ЕСТД: вид документации (2 цифры) → вид техпроцесса (+1 цифра, 3 итого)
+   → метод выполнения (+2 цифры, 5 итого, лист — регистрируемый «вид») */
+const TOP_LEVEL = 'Вид документации';
+const LEAF_LEVEL = 'Метод выполнения';
+const LEAF_CODE_LEN = 5;
+const SERIAL_LEN = 5;
+
+const CACHE_KEY = 'estd_widget_classifier_v1'; // bump после изменения формата
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+/* Мгновенно отрисовать классификатор из localStorage если есть */
+function loadFromCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.classifier) || !data.classifier.length) return false;
+    if (Date.now() - data.timestamp > CACHE_TTL) return false;
+    S.classifier = data.classifier;
+    const ageSec = Math.round((Date.now() - data.timestamp) / 1000);
+    console.log(`[cache] классификатор: ${S.classifier.length} записей, возраст ${ageSec}с`);
+    setConn(true, `${S.classifier.length} видов (кэш)`);
+    return true;
+  } catch(e) {
+    console.warn('[cache] чтение неудачно:', e);
+    return false;
+  }
+}
+
+function saveToCache() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      timestamp: Date.now(),
+      classifier: S.classifier,
+    }));
+    console.log('[cache] сохранён');
+  } catch(e) {
+    console.warn('[cache] не удалось сохранить:', e);
+  }
+}
+
+/* ═══════════════════════════════════
+   GRIST
+═══════════════════════════════════ */
+let firstComponentsLoadDone = false;
+
+function initGrist() {
+  const t0 = performance.now();
+
+  if (typeof grist === 'undefined') {
+    setConn(false, 'Grist API не найден');
+    renderAll();
+    return;
+  }
+
+  grist.ready({ requiredAccess: 'full' });
+  setConn(true, 'Загрузка…');
+
+  grist.onRecords(() => {
+    if (firstComponentsLoadDone) loadComponents();
+  });
+
+  grist.onOptions(opts => {
+    if (!opts) return;
+    if (opts.recent) S.recent = opts.recent;
+    renderSidebar();
+  });
+
+  // Мгновенный показ из кэша (отложенно)
+  setTimeout(() => {
+    if (loadFromCache()) renderAll();
+  }, 0);
+
+  // Параллельная загрузка
+  Promise.all([
+    loadClassifier(),
+    loadComponents(),
+  ]).then(() => {
+    console.log(`[init] полная загрузка за ${Math.round(performance.now() - t0)}мс`);
+  });
+}
+
+async function loadComponents() {
+  if (typeof grist === 'undefined') return;
+  const t0 = performance.now();
+  try {
+    const rows = await grist.docApi.fetchTable('estd_components');
+    S.components = rowsToRecords(rows);
+    computeNextSerials();
+    refreshPrefixList();
+    firstComponentsLoadDone = true;
+    console.log(`[estd_components] ${S.components.length} за ${Math.round(performance.now()-t0)}мс`);
+    renderAll();
+  } catch(e) {
+    console.error('Ошибка загрузки Components:', e);
+  }
+}
+
+async function loadClassifier() {
+  if (typeof grist === 'undefined') return;
+  const t0 = performance.now();
+
+  // docId и токен — в фоне
+  (async () => {
+    try {
+      if (grist.docApi.getDocName) S.docId = await grist.docApi.getDocName();
+    } catch(e) {}
+    if (!S.docId) {
+      try {
+        const refUrl = document.referrer || '';
+        const m = refUrl.match(/\/doc\/([^/?#]+)/) || refUrl.match(/\/o\/[^/]+\/([^/?#]+)\//);
+        if (m) S.docId = m[1];
+      } catch(e) {}
+    }
+    try {
+      if (grist.docApi.getAccessToken) {
+        const tokenInfo = await grist.docApi.getAccessToken({ readOnly: true });
+        S.accessToken = tokenInfo.token;
+        S.tokenBaseUrl = tokenInfo.baseUrl;
+      }
+    } catch(e) {}
+  })();
+
+  // Ждём токен (до 1.5с)
+  for (let i = 0; i < 30 && !S.accessToken; i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  // Попытка 1 — ленивая загрузка: только классы (SQL или fetchTable с фильтром)
+  const lazyResult = await fetchClassifierByParent(null);
+
+  // Если fetchTable вернул все записи без фильтрации — сразу full mode, не тратим время повторно
+  if (lazyResult && lazyResult._fullLoad) {
+    S.classifierMode = 'full';
+    S.classifier = lazyResult.all;
+    S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    console.log(`[estd_classifier full] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${S.classifier.length} видов`);
+    setTimeout(saveToCache, 0);
+    renderAll();
+    return;
+  }
+
+  // Ленивый режим — получили только классы
+  if (lazyResult && lazyResult.length) {
+    S.classifierMode = 'lazy';
+    S.classifierLoadedParents = new Set(['']);
+    S.classifier = lazyResult;
+    S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    console.log(`[estd_classifier lazy] ${lazyResult.length} классов за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${lazyResult.length} классов`);
+    renderAll();
+    return;
+  }
+
+  // Попытка 2 — SQL полный
+  const light = await tryFetchClassifierLight();
+  if (light && light.length) {
+    S.classifierMode = 'full';
+    S.classifier = light;
+    S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    console.log(`[estd_classifier full SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${S.classifier.length} видов`);
+    setTimeout(saveToCache, 0);
+    renderAll();
+    return;
+  }
+
+  // Попытка 3 — fetchTable (полный)
+  try {
+    const tables = await grist.docApi.listTables();
+    if (!tables.includes('estd_classifier')) {
+      setConn(false, 'Таблица estd_classifier не найдена');
+      return;
+    }
+    const rows = await grist.docApi.fetchTable('estd_classifier');
+    S.classifierMode = 'full';
+    S.classifier = rowsToRecords(rows);
+    S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    console.log(`[estd_classifier fetchTable] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${S.classifier.length} видов`);
+    setTimeout(saveToCache, 0);
+    renderAll();
+  } catch(e) {
+    setConn(false, 'Ошибка загрузки классификатора');
+    console.error(e);
+  }
+}
+
+/* Попытка лёгкой загрузки через SQL endpoint */
+async function tryFetchClassifierLight() {
+  // Ждём пока appear accessToken
+  for (let i = 0; i < 30 && !S.accessToken; i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  if (!S.accessToken || !S.tokenBaseUrl) return null;
+
+  try {
+    const sql = 'SELECT id, code, name, level, parent_code FROM estd_classifier';
+    const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&auth=${S.accessToken}`;
+    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    if (!res.ok) {
+      console.warn(`[SQL] HTTP ${res.status} — fallback на fetchTable`);
+      return null;
+    }
+    const data = await res.json();
+    const records = data.records || [];
+    return records.map(r => ({
+      id: r.id,
+      code: r.fields?.code ?? r.code,
+      name: r.fields?.name ?? r.name,
+      level: r.fields?.level ?? r.level,
+      parent_code: r.fields?.parent_code ?? r.parent_code,
+    }));
+  } catch(e) {
+    console.warn('[SQL] не сработал:', e.message);
+    return null;
+  }
+}
+
+/* Загрузить записи по parent_code; null = верхний уровень (Классы).
+   Возвращает: массив записей | { _fullLoad: true, all: [...] } | null
+   _fullLoad означает: SQL недоступен, fetchTable вернул все записи без фильтрации —
+   нужно переключиться в full mode и переиспользовать эти данные. */
+async function fetchClassifierByParent(parentCode) {
+  // Вариант А: SQL (параметризованный — кириллица через args, не инлайн)
+  if (S.accessToken && S.tokenBaseUrl) {
+    try {
+      const sql = parentCode === null
+        ? 'SELECT id, code, name, level, parent_code FROM estd_classifier WHERE level = ?'
+        : 'SELECT id, code, name, level, parent_code FROM estd_classifier WHERE parent_code = ?';
+      const args = [parentCode === null ? TOP_LEVEL : parentCode];
+      const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify(args))}&auth=${S.accessToken}`;
+      const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+      if (res.ok) {
+        const data = await res.json();
+        const records = (data.records || []).map(r => ({
+          id: r.id, code: r.fields?.code ?? r.code, name: r.fields?.name ?? r.name,
+          level: r.fields?.level ?? r.level, parent_code: r.fields?.parent_code ?? r.parent_code,
+        }));
+        if (records.length) { console.log(`[SQL lazy] ${records.length} для '${parentCode}'`); return records; }
+      } else { console.warn(`[SQL lazy] HTTP ${res.status}`); }
+    } catch(e) { console.warn('[SQL lazy]', e.message); }
+  }
+
+  // Вариант Б: fetchTable (с фильтром или без — зависит от версии Grist)
+  if (typeof grist !== 'undefined') {
+    try {
+      const filter = parentCode === null ? { level: [TOP_LEVEL] } : { parent_code: [parentCode] };
+      const rows = await grist.docApi.fetchTable('estd_classifier', { filters: filter });
+      const all = rowsToRecords(rows);
+      if (!all.length) return null;
+
+      // Проверяем: фильтр сработал или вернулись все записи?
+      const filtered = parentCode === null
+        ? all.filter(r => r.level === TOP_LEVEL)
+        : all.filter(r => String(r.parent_code) === String(parentCode));
+
+      if (filtered.length && filtered.length === all.length) {
+        // Фильтр сработал — ленивый режим
+        console.log(`[fetchTable lazy] ${filtered.length} для '${parentCode}'`);
+        return filtered;
+      } else if (filtered.length < all.length) {
+        // Фильтр проигнорирован — вернулись все записи. Сигнализируем full mode.
+        console.log(`[fetchTable full] ${all.length} записей (фильтр не поддерживается)`);
+        return { _fullLoad: true, all };
+      }
+    } catch(e) { console.warn('[fetchTable lazy]', e.message); }
+  }
+
+  return null;
+}
+
+/* Подгрузить детей узла если ещё не загружены */
+async function ensureChildrenLoaded(parentCode) {
+  if (S.classifierMode === 'full') return;
+  if (!S.classifierLoadedParents) S.classifierLoadedParents = new Set();
+  if (S.classifierLoadedParents.has(parentCode)) return;
+
+  S.classifierLoading = true;
+  renderBrowse();
+
+  const children = await fetchClassifierByParent(parentCode);
+  S.classifierLoading = false;
+
+  if (children) {
+    const existingCodes = new Set(S.classifier.map(r => r.code));
+    children.forEach(r => { if (!existingCodes.has(r.code)) S.classifier.push(r); });
+    S.classifierLoadedParents.add(parentCode);
+    S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
+    console.log(`[lazy] +${children.length} для '${parentCode}'`);
+  } else {
+    S.classifierLoadedParents.add(parentCode);
+  }
+}
+
+/* Если перед кодом случайно написан префикс (орг.префикс или код класса/группы через точку),
+   ищем также «хвост» — то, что идёт после последнего разделителя или буквенного префикса */
+function stripCodePrefix(q) {
+  if (q.includes('.')) {
+    const tail = q.split('.').pop().trim();
+    if (tail) return tail;
+  }
+  const m = q.match(/^[a-zа-яё]+(\d.*)$/i);
+  if (m && m[1]) return m[1];
+  return q;
+}
+
+/* SQL-поиск видов для ленивого режима */
+async function searchClassifierKinds(q) {
+  const qAlt = stripCodePrefix(q);
+  const useAlt = qAlt !== q;
+  if (!S.accessToken || !S.tokenBaseUrl) {
+    return S.classifier.filter(r =>
+      r.level === LEAF_LEVEL &&
+      (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
+    ).slice(0, 30);
+  }
+  try {
+    const pattern = `%${q}%`;
+    const sql = useAlt
+      ? 'SELECT id, code, name, level, parent_code FROM estd_classifier WHERE level = ? AND (LOWER(code) LIKE ? OR LOWER(code) LIKE ? OR LOWER(name) LIKE ?) LIMIT 30'
+      : 'SELECT id, code, name, level, parent_code FROM estd_classifier WHERE level = ? AND (LOWER(code) LIKE ? OR LOWER(name) LIKE ?) LIMIT 30';
+    const args = useAlt ? [LEAF_LEVEL, pattern, `%${qAlt}%`, pattern] : [LEAF_LEVEL, pattern, pattern];
+    const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify(args))}&auth=${S.accessToken}`;
+    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const records = (data.records || []).map(r => ({
+      id: r.id, code: r.fields?.code ?? r.code, name: r.fields?.name ?? r.name,
+      level: r.fields?.level ?? r.level, parent_code: r.fields?.parent_code ?? r.parent_code,
+    }));
+    const existingCodes = new Set(S.classifier.map(r => r.code));
+    records.forEach(r => { if (!existingCodes.has(r.code)) S.classifier.push(r); });
+    return records;
+  } catch(e) {
+    return S.classifier.filter(r =>
+      r.level === LEAF_LEVEL &&
+      (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
+    ).slice(0, 30);
+  }
+}
+
+/* Загрузить один узел по code (для построения пути в ленивом режиме) */
+async function fetchClassifierNodeByCode(code) {
+  if (!S.accessToken || !S.tokenBaseUrl) return null;
+  try {
+    const sql = 'SELECT id, code, name, level, parent_code FROM estd_classifier WHERE code = ? LIMIT 1';
+    const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify([code]))}&auth=${S.accessToken}`;
+    const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rec = (data.records || [])[0];
+    if (!rec) return null;
+    return { id: rec.id, code: rec.fields?.code ?? rec.code, name: rec.fields?.name ?? rec.name,
+      level: rec.fields?.level ?? rec.level, parent_code: rec.fields?.parent_code ?? rec.parent_code };
+  } catch(e) { return null; }
+}
+
+function rowsToRecords(rows) {
+  if (!rows || !rows.id) return [];
+  return rows.id.map((id, i) => {
+    const rec = { id };
+    Object.keys(rows).forEach(k => { if (k !== 'id') rec[k] = rows[k][i]; });
+    return rec;
+  });
+}
+
+function setConn(ok, lbl) {
+  document.getElementById('connDot').className = 'conn-dot' + (ok ? ' ok' : '');
+  document.getElementById('connLbl').textContent = lbl;
+}
+
+/* ═══════════════════════════════════
+   SERIAL / NEXT FREE
+═══════════════════════════════════ */
+const serialCache = {}; // "prefix:kindCode" → Set of used serials
+
+function computeNextSerials() {
+  Object.keys(serialCache).forEach(k => delete serialCache[k]);
+  S.components.forEach(c => {
+    const dn = c.estd_number || '';
+    const parts = dn.split('.');
+    if (parts.length < 2) return;
+    const serial = parts[parts.length - 1].padStart(SERIAL_LEN, '0');
+    // Ищем код вида (метод выполнения, LEAF_CODE_LEN цифр)
+    let kindIdx = -1;
+    for (let i = parts.length - 2; i >= 0; i--) {
+      if (new RegExp(`^\\d{${LEAF_CODE_LEN}}$`).test(parts[i])) { kindIdx = i; break; }
+    }
+    if (kindIdx === -1 || !/^\d+$/.test(serial)) return;
+    const kindCode = parts[kindIdx];
+    // Префикс = всё что перед кодом вида, склеенное через точку, или org_prefix из записи
+    const prefix = (c.org_prefix || parts.slice(0, kindIdx).join('.') || '').trim();
+    const key = `${prefix}:${kindCode}`;
+    if (!serialCache[key]) serialCache[key] = new Set();
+    serialCache[key].add(serial);
+  });
+}
+
+function nextFreeSerial(kindCode, prefix) {
+  const key = `${(prefix||'').trim()}:${kindCode}`;
+  const used = serialCache[key] || new Set();
+  const max = 10 ** SERIAL_LEN - 1;
+  for (let i = 1; i <= max; i++) {
+    const s = String(i).padStart(SERIAL_LEN,'0');
+    if (!used.has(s)) return s;
+  }
+  return null;
+}
+
+function isSerialFree(kindCode, prefix, serial) {
+  const key = `${(prefix||'').trim()}:${kindCode}`;
+  const s = String(serial).padStart(SERIAL_LEN,'0');
+  return !(serialCache[key] || new Set()).has(s);
+}
+
+/* ═══════════════════════════════════
+   SEARCH
+═══════════════════════════════════ */
+document.getElementById('searchInput').addEventListener('input', function() {
+  S.searchQ = this.value.trim();
+  document.getElementById('searchClear').className = 'search-clear' + (S.searchQ ? ' on' : '');
+  S.selResult = null;
+  render();
+});
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  S.searchQ = '';
+  S.selResult = null;
+  document.getElementById('searchClear').className = 'search-clear';
+  render();
+}
+
+function doSearch(q) {
+  const lq = q.toLowerCase();
+  return S.components.filter(r =>
+    (r.estd_number||'').toLowerCase().includes(lq) ||
+    (r.name||'').toLowerCase().includes(lq) ||
+    (r.estd_kind_name||'').toLowerCase().includes(lq)
+  ).slice(0, 50);
+}
+
+function selectResult(r) {
+  // Сброс состояния дерева при смене выбранного компонента
+  if (!S.selResult || S.selResult.id !== r.id) {
+    S.relExpanded = null;
+    S.relRootId = null;
+  }
+  S.selResult = r;
+  addRecent(r);
+  render();
+}
+
+function addRecent(r) {
+  S.recent = [r, ...S.recent.filter(x => x.id !== r.id)].slice(0, 8);
+  renderSidebar();
+  saveOptions();
+}
+
+function saveOptions() {
+  if (typeof grist === 'undefined') return;
+  try {
+    grist.setOptions({
+      recent: S.recent.map(r => ({
+        id: r.id,
+        estd_number: r.estd_number,
+        name: r.name,
+        estd_kind_name: r.estd_kind_name,
+      })),
+    });
+  } catch(e) {
+    console.warn('Failed to save options:', e);
+  }
+}
+
+function closeRel() { S.selResult = null; render(); }
+
+/* ═══════════════════════════════════
+   TABS
+═══════════════════════════════════ */
+function switchTab(tab) {
+  S.activeTab = tab;
+  document.getElementById('tabBtnReg').classList.toggle('active', tab === 'reg');
+  document.getElementById('tabBtnStruct').classList.toggle('active', tab === 'structure');
+  render();
+}
+
+/* ═══════════════════════════════════
+   RENDER ROUTER
+═══════════════════════════════════ */
+function render() {
+  const tab2 = S.activeTab === 'structure';
+  document.getElementById('pSearch').style.display = tab2 ? 'flex' : 'none';
+  document.getElementById('pBrowse').style.display = tab2 ? 'none' : 'flex';
+  if (tab2) {
+    renderSearch();
+    if (S.selResult) renderRel(); else document.getElementById('pRel').style.display = 'none';
+  } else {
+    renderBrowse();
+    updatePreview();
+  }
+}
+
+function renderAll() { renderSidebar(); render(); }
+
+/* ═══════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════ */
+function computeTopKinds() {
+  const counts = {};
+  S.components.forEach(c => {
+    const code = extractKindCodeFromDN(c.estd_number);
+    if (!code) return;
+    counts[code] = (counts[code] || 0) + 1;
+  });
+  return Object.keys(counts)
+    .sort((a, b) => counts[b] - counts[a])
+    .slice(0, 5);
+}
+
+function renderSidebar() {
+  const favEl = document.getElementById('favList');
+  const recEl = document.getElementById('recentList');
+  const topKinds = computeTopKinds();
+  favEl.innerHTML = topKinds.length
+    ? topKinds.map(code => `<div class="sb-item" onclick="goToKindCode('${code}')">
+        <span class="sb-fav-code">${esc(code)}</span>
+      </div>`).join('')
+    : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div>`;
+
+  recEl.innerHTML = S.recent.length
+    ? S.recent.map(r => `<div class="sb-item" onclick="goTo(${r.id})">
+        <span class="sb-code">${esc(r.estd_number||'—')}</span>
+        <span class="sb-name">${esc(r.name||'—')}</span>
+      </div>`).join('')
+    : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div>`;
+}
+
+async function goTo(id) {
+  const r = S.components.find(x => x.id === id);
+  if (!r) return;
+  addRecent(r);
+  if (S.activeTab === 'reg') {
+    await openKindForComponent(r);
+  } else {
+    document.getElementById('searchInput').value = r.estd_number;
+    S.searchQ = r.estd_number;
+    document.getElementById('searchClear').className = 'search-clear on';
+    S.selResult = r;
+    switchTab('structure');
+  }
+}
+
+/* На вкладке «Регистрация номера» клик по избранному/последнему открывает вид этого компонента в браузере классификатора */
+function extractKindCodeFromDN(dn) {
+  const parts = (dn || '').split('.');
+  for (let i = parts.length - 2; i >= 0; i--) {
+    if (new RegExp(`^\\d{${LEAF_CODE_LEN}}$`).test(parts[i])) return parts[i];
+  }
+  return null;
+}
+
+async function openKindForComponent(r) {
+  const code = extractKindCodeFromDN(r.estd_number);
+  if (!code) return;
+  await goToKindCode(code);
+}
+
+async function goToKindCode(code) {
+  let kind = S.classifier.find(k => k.code === code && k.level === LEAF_LEVEL);
+  if (!kind) {
+    kind = await fetchClassifierNodeByCode(code);
+    if (kind) {
+      const existingCodes = new Set(S.classifier.map(x => x.code));
+      if (!existingCodes.has(kind.code)) S.classifier.push(kind);
+    }
+  }
+  if (!kind) return;
+  if (S.activeTab !== 'reg') switchTab('reg');
+  pickKind(kind);
+  await buildPathForKind(kind);
+  renderBrowse();
+  renderRegistered();
+}
+
+/* ═══════════════════════════════════
+   SEARCH RENDER
+═══════════════════════════════════ */
+function renderSearch() {
+  document.getElementById('searchTitle').textContent = 'Результаты поиска';
+  const body = document.getElementById('searchBody');
+  if (!S.searchQ) {
+    document.getElementById('searchCount').textContent = '';
+    body.innerHTML = `<div class="empty"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Введите номер или наименование для поиска</div>`;
+    return;
+  }
+  const results = doSearch(S.searchQ);
+  document.getElementById('searchCount').textContent = results.length;
+  if (!results.length) {
+    body.innerHTML = `<div class="empty"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Ничего не найдено</div>`;
+    return;
+  }
+  body.innerHTML = results.map(r => `
+    <div class="res-item ${S.selResult&&S.selResult.id===r.id?'sel':''}" onclick='selectResult(${jstr(r)})'>
+      <span class="res-dn">${esc(r.estd_number||'—')}</span>
+      <span class="res-name">${hi(r.name||'—', S.searchQ)}</span>
+      <span class="res-kind">${esc(r.estd_kind_name||'')}</span>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════
+   REL PANEL — иерархическое дерево
+═══════════════════════════════════ */
+function renderRel() {
+  const r = S.selResult;
+  document.getElementById('pRel').style.display = 'block';
+  const body = document.getElementById('relBody');
+
+  // 1. Поднимаемся до корня (компонента без primary_use)
+  let root = r;
+  const visited = new Set([r.id]);
+  while (root.primary_use && root.primary_use > 0) {
+    const parent = S.components.find(x => x.id === root.primary_use);
+    if (!parent) break;
+    if (visited.has(parent.id)) break; // защита от циклов
+    visited.add(parent.id);
+    root = parent;
+  }
+
+  // 2. Собираем "путь" от корня до выбранного — эти узлы развернуть автоматически
+  const pathIds = new Set();
+  let cur = r;
+  while (cur) {
+    pathIds.add(cur.id);
+    if (!cur.primary_use || cur.primary_use <= 0) break;
+    const p = S.components.find(x => x.id === cur.primary_use);
+    if (!p || pathIds.has(p.id)) break;
+    cur = p;
+  }
+
+  // 3. Инициализируем S.relExpanded если ещё не было
+  if (!S.relExpanded || S.relRootId !== root.id) {
+    S.relExpanded = new Set(pathIds);
+    // также разворачиваем поддерево выбранного на 1 уровень вниз
+    S.relExpanded.add(r.id);
+    S.relRootId = root.id;
+  }
+
+  // 4. Рендерим рекурсивно от корня
+  let html = '<div class="tree-root">';
+  html += renderTreeNode(root, 0, r.id, new Set());
+  html += '</div>';
+
+  // Подсказка если корень = выбранный
+  if (root.id === r.id) {
+    const hasChildren = S.components.some(x => x.primary_use === r.id);
+    if (!hasChildren) {
+      html += `<div style="font-size:11px;color:var(--tx3);padding:8px 0 0;text-align:center;font-style:italic">Компонент не связан с другими записями</div>`;
+    }
+  }
+
+  body.innerHTML = html;
+}
+
+function renderTreeNode(node, depth, targetId, seen) {
+  if (seen.has(node.id)) {
+    return `<div class="tree-node" style="padding-left:${8 + depth*18}px;padding-right:8px">
+      <span class="tree-toggle empty"></span>
+      <span class="rel-dn">${esc(node.estd_number||'')}</span>
+      <span class="rel-nm" style="color:var(--red);font-style:italic">(цикл)</span>
+    </div>`;
+  }
+  const localSeen = new Set(seen); localSeen.add(node.id);
+
+  const children = S.components.filter(x => x.primary_use === node.id);
+  const hasChildren = children.length > 0;
+  const isExpanded = S.relExpanded.has(node.id);
+  const isTarget = node.id === targetId;
+  const isCurrent = S.selResult && S.selResult.id === node.id;
+
+  let cls = 'tree-node';
+  if (isTarget) cls += ' target';
+  if (isCurrent && !isTarget) cls += ' current';
+
+  let html = `<div class="${cls}" style="padding-left:${8 + depth*18}px;padding-right:8px">`;
+
+  if (hasChildren) {
+    html += `<button class="tree-toggle" onclick="toggleRelNode(${node.id})">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform:rotate(${isExpanded?90:0}deg);transition:transform .15s">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>`;
+  } else {
+    html += `<span class="tree-toggle empty"></span>`;
+  }
+
+  html += `<span class="tree-content" onclick='selectResult(${jstr(node)})'>
+    <span class="rel-dn">${esc(node.estd_number||'')}</span>
+    <span class="rel-nm">${esc(node.name||'')}</span>
+    ${hasChildren ? `<span class="tree-count">${children.length}</span>` : ''}
+  </span>`;
+  html += `</div>`;
+
+  if (hasChildren && isExpanded) {
+    children.forEach(ch => {
+      html += renderTreeNode(ch, depth + 1, targetId, localSeen);
+    });
+  }
+
+  return html;
+}
+
+function toggleRelNode(id) {
+  if (S.relExpanded.has(id)) S.relExpanded.delete(id);
+  else S.relExpanded.add(id);
+  renderRel();
+}
+
+/* ═══════════════════════════════════
+   ESTD BROWSER
+═══════════════════════════════════ */
+function renderBrowse() {
+  renderBreadcrumb();
+  renderBrowseSummary();
+  const body = document.getElementById('browseBody');
+  const path = S.browsePath;
+
+  if (S.classifierLoading) {
+    body.innerHTML = `<div class="empty" style="color:var(--tx3)">Загрузка…</div>`;
+    return;
+  }
+  if (!S.classifier.length) {
+    body.innerHTML = `<div class="empty">Классификатор не загружен.<br>Проверьте таблицу estd_classifier в Grist.</div>`;
+    return;
+  }
+
+  // Если последний выбранный — Вид, список не показываем
+  if (path.length && path[path.length-1].level === LEAF_LEVEL) {
+    body.innerHTML = '';
+    return;
+  }
+
+  if (!path.length) {
+    const classes = S.classifier.filter(r => r.level === TOP_LEVEL);
+    body.innerHTML = `<div class="cls-list">${classes.map(c => `
+      <div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+        <span class="cls-row-code">${c.code}</span>
+        <span class="cls-row-name">${esc(c.name)}</span>
+      </div>`).join('')}</div>`;
+    return;
+  }
+
+  const parentCode = path[path.length-1].code;
+  const children = S.classifier.filter(r => r.parent_code === parentCode);
+
+  if (!children.length) {
+    body.innerHTML = '';
+    return;
+  }
+
+  body.innerHTML = `<div class="sub-list">${children.map(c => `
+    <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+      <span class="sub-row-code">${c.code}</span>
+      <span class="sub-row-name">${esc(c.name)}</span>
+    </div>`).join('')}</div>`;
+}
+
+function renderBrowseSummary() {
+  const path = S.browsePath;
+  const summary = document.getElementById('browseSummary');
+  if (!path.length) { summary.className = 'browse-summary'; return; }
+  summary.className = 'browse-summary on';
+
+  const cur = path[path.length-1];
+  document.getElementById('bsCode').textContent = cur.code;
+  const pathHtml = `<div class="bs-row">${path.map(p => esc(p.name)).join(', ')}</div>`;
+  document.getElementById('bsPath').innerHTML = pathHtml;
+}
+
+async function browseDrill(code, name, level) {
+  S.browsePath.push({code, name, level});
+  if (level === LEAF_LEVEL) {
+    const kind = S.classifier.find(r => r.code === code);
+    if (kind) pickKind(kind);
+  } else {
+    await ensureChildrenLoaded(code);
+  }
+  renderBrowse();
+  renderRegistered();
+}
+
+function browseUp(idx) {
+  S.browsePath = S.browsePath.slice(0, idx);
+  // сбрасываем вид если ушли выше
+  if (!S.browsePath.length || S.browsePath[S.browsePath.length-1].level !== LEAF_LEVEL) {
+    renderRegistered();
+  }
+  renderBrowse();
+}
+
+function renderBreadcrumb() {
+  const bc = document.getElementById('bc');
+  let html = `<span class="bc-item ${!S.browsePath.length?'cur':''}" onclick="browseUp(0)">Все классы</span>`;
+  S.browsePath.forEach((p,i) => {
+    html += `<span class="bc-sep">›</span>`;
+    html += `<span class="bc-item ${i===S.browsePath.length-1?'cur':''}" onclick="browseUp(${i+1})">${esc(p.code)}</span>`;
+  });
+  bc.innerHTML = html;
+}
+
+/* ── Browser kind search ── */
+async function onBrowserKindInput() {
+  const q = document.getElementById('browserKindInput').value.trim().toLowerCase();
+  if (!q) { hideDrop('browserKindDrop'); return; }
+
+  let items;
+  if (S.classifierMode === 'lazy') {
+    items = await searchClassifierKinds(q);
+  } else {
+    const qAlt = stripCodePrefix(q);
+    const useAlt = qAlt !== q;
+    items = S.classifier.filter(r =>
+      r.level === LEAF_LEVEL &&
+      (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
+    ).slice(0, 30);
+  }
+
+  renderAc('browserKindDrop', items, async i => {
+    pickKind(items[i]);
+    await buildPathForKind(items[i]);
+    document.getElementById('browserKindInput').value = '';
+    hideDrop('browserKindDrop');
+    renderBrowse();
+    renderRegistered();
+  });
+}
+
+function onBrowserKindKey(e) {
+  acKey(e, 'browserKindDrop', S, 'browserKindAcIdx', async () => {
+    const items = getVisibleAcItems('browserKindDrop');
+    if (S.browserKindAcIdx >= 0 && items[S.browserKindAcIdx]) {
+      const kind = items[S.browserKindAcIdx]._rec;
+      pickKind(kind);
+      await buildPathForKind(kind);
+      document.getElementById('browserKindInput').value = '';
+      hideDrop('browserKindDrop');
+      renderBrowse();
+      renderRegistered();
+    }
+  });
+}
+
+async function buildPathForKind(kind) {
+  const path = [];
+  let current = kind;
+  while (current) {
+    path.unshift({ code: current.code, name: current.name, level: current.level });
+    if (!current.parent_code) break;
+    let parent = S.classifier.find(r => r.code === current.parent_code);
+    if (!parent && S.classifierMode === 'lazy') {
+      parent = await fetchClassifierNodeByCode(current.parent_code);
+      if (parent) {
+        const existingCodes = new Set(S.classifier.map(r => r.code));
+        if (!existingCodes.has(parent.code)) S.classifier.push(parent);
+      }
+    }
+    current = parent || null;
+  }
+  S.browsePath = path;
+}
+
+/* ── Registered components table ── */
+function renderRegistered() {
+  const panel = document.getElementById('pRegistered');
+  const body = document.getElementById('regBody');
+  const count = document.getElementById('regCount');
+
+  // показываем только если выбран лист (метод выполнения)
+  const path = S.browsePath;
+  if (!path.length || path[path.length-1].level !== LEAF_LEVEL) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  const kindCode = path[path.length-1].code;
+  const items = S.components.filter(c => {
+    const dn = c.estd_number || '';
+    // Совпадение по сегменту: либо в начале "685621.", либо после точки ".685621."
+    return dn.startsWith(kindCode + '.') || dn.includes('.' + kindCode + '.');
+  }).sort((a,b) => (a.estd_number||'').localeCompare(b.estd_number||''));
+
+  panel.style.display = 'block';
+  count.textContent = items.length;
+
+  if (!items.length) {
+    body.innerHTML = `<div class="reg-empty">Нет зарегистрированных компонентов для вида ${kindCode}</div>`;
+    return;
+  }
+
+  // Строим lookup id→запись для primary_use
+  const byId = {};
+  S.components.forEach(c => { byId[c.id] = c; });
+
+  body.innerHTML = `<table class="reg-table">
+    <colgroup>
+      <col style="width:1%">
+      <col style="width:50%">
+      <col style="width:39%">
+      <col style="width:10%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th style="border-right:1px solid var(--brd2)">Номер ЕСТД</th>
+        <th style="border-right:1px solid var(--brd2)">Наименование</th>
+        <th style="border-right:1px solid var(--brd2)">Первичное применение</th>
+        <th>Создан</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.map(c => {
+        const useId = c.primary_use;
+        const linked = (useId && useId > 0) ? byId[useId] : null;
+        const author = c.created_by || '';
+        const ts = c.created_at;
+        const dateStr = (ts && !isNaN(ts)) ? new Date(ts * 1000).toLocaleString('ru-RU') : '';
+        const initial = author ? author.trim().charAt(0).toUpperCase() : '?';
+        const tooltipText = author
+          ? `${author}${dateStr ? '\n' + dateStr : ''}`
+          : 'Автор неизвестен';
+        const editing = S.editing && S.editing.rowId === c.id;
+        const editingDN = editing && S.editing.mode === 'ref';
+        const editingCompName = editing && S.editing.mode === 'compName';
+
+        // Ячейка первичного применения (только ссылка на существующий компонент)
+        let useCell;
+        if (editingDN) {
+          const selectedDN = S.editing.selUse ? S.editing.selUse.estd_number : '';
+          useCell = `<div class="cell-content">
+            <div class="cell-edit-wrap">
+              <input class="cell-edit-input mono" id="editDNInput-${c.id}" placeholder="Поиск..." autocomplete="off" value="${esc(selectedDN)}" oninput="onEditDNInput(${c.id})" onkeydown="onEditKey(event, ${c.id})">
+              <div class="cell-edit-drop" id="editDNDrop-${c.id}"></div>
+            </div>
+            <button class="cell-edit-btn save" id="editSaveBtn-${c.id}" ${S.editing.selUse ? '' : 'disabled'} onclick="saveEditDN(${c.id})" title="Сохранить">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+            <button class="cell-edit-btn cancel" onclick="cancelEdit()" title="Отмена">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>`;
+        } else {
+          useCell = `<div class="cell-content">
+            <span class="cell-text reg-use-name">${linked ? `<span class="reg-use-dn">${esc(linked.estd_number)}</span> — ${esc(linked.name)}` : '—'}</span>
+            <button class="cell-edit-btn" onclick="startEditDN(${c.id})" title="Редактировать">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+          </div>`;
+        }
+
+        // Ячейка наименования компонента (Номенклатура)
+        let compNameCell;
+        if (editingCompName) {
+          compNameCell = `<div class="cell-content">
+            <input class="cell-edit-input" id="editCompNameInput-${c.id}" placeholder="Наименование…" autocomplete="off" value="${esc(c.name||'')}" onkeydown="onEditKey(event,${c.id})">
+            <button class="cell-edit-btn save" onclick="saveEditCompName(${c.id})" title="Сохранить">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+            <button class="cell-edit-btn cancel" onclick="cancelEdit()" title="Отмена">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>`;
+        } else {
+          compNameCell = `<div class="cell-content">
+            <span class="cell-text" style="text-align:left">${esc(c.name||'—')}</span>
+            <button class="cell-edit-btn" onclick="startEditCompName(${c.id})" title="Редактировать">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+          </div>`;
+        }
+
+        return `<tr>
+          <td class="reg-dn" style="border-right:1px solid var(--brd)">${esc(c.estd_number||'—')}</td>
+          <td class="editable-cell" style="border-right:1px solid var(--brd);text-align:left">${compNameCell}</td>
+          <td class="editable-cell" style="border-right:1px solid var(--brd)">${useCell}</td>
+          <td class="reg-author">
+            <div class="avatar" data-tooltip="${esc(tooltipText)}" style="background:${author ? avatarColor(author) : 'var(--brd2)'}">${esc(initial)}</div>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+
+  // После рендера — ставим фокус на активный input
+  if (S.editing) {
+    const id = S.editing.rowId;
+    const inputId = S.editing.mode === 'compName' ? `editCompNameInput-${id}` : `editDNInput-${id}`;
+    const el = document.getElementById(inputId);
+    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }
+}
+
+/* ═══════════════════════════════════
+   INLINE EDIT — primary_use
+═══════════════════════════════════ */
+function startEditDN(rowId) {
+  S.editing = { rowId, mode: 'ref', selUse: null };
+  renderRegistered();
+}
+
+function startEditCompName(rowId) {
+  S.editing = { rowId, mode: 'compName' };
+  renderRegistered();
+}
+
+function cancelEdit() {
+  S.editing = null;
+  renderRegistered();
+}
+
+async function saveEditCompName(rowId) {
+  if (!S.editing) return;
+  const text = (document.getElementById(`editCompNameInput-${rowId}`)?.value || '').trim();
+  if (!text) return;
+  S.editing = null;
+
+  const idx = S.components.findIndex(c => c.id === rowId);
+  if (idx >= 0) S.components[idx].name = text;
+  renderRegistered();
+
+  try {
+    if (typeof grist !== 'undefined') {
+      await grist.selectedTable.update({ id: rowId, fields: { name: text } });
+      loadComponents();
+    }
+  } catch(e) {
+    alert('Ошибка сохранения: ' + e.message);
+    loadComponents();
+  }
+}
+
+function onEditDNInput(rowId) {
+  const input = document.getElementById(`editDNInput-${rowId}`);
+  const q = input.value.trim().toLowerCase();
+  // сбрасываем выбор при изменении текста (нужно явно выбрать из списка)
+  S.editing.selUse = null;
+  document.getElementById(`editSaveBtn-${rowId}`).disabled = true;
+
+  const drop = document.getElementById(`editDNDrop-${rowId}`);
+  if (!q) { drop.className = 'cell-edit-drop'; return; }
+
+  const items = S.components.filter(r =>
+    r.id !== rowId && // нельзя сослаться на себя
+    ((r.estd_number||'').toLowerCase().includes(q) ||
+     (r.name||'').toLowerCase().includes(q))
+  ).slice(0, 20);
+
+  if (!items.length) { drop.className = 'cell-edit-drop'; return; }
+
+  drop.innerHTML = items.map((r,i) => `
+    <div class="ac-item" data-idx="${i}" style="text-align:left">
+      <span class="ac-code">${esc(r.estd_number||'')}</span>
+      <span class="ac-name">${esc(r.name||'')}</span>
+    </div>`).join('');
+  drop.querySelectorAll('.ac-item').forEach((el, i) => {
+    el._rec = items[i];
+    el.addEventListener('mousedown', e => e.preventDefault());
+    el.addEventListener('click', () => pickEditDN(rowId, items[i]));
+  });
+  drop.className = 'cell-edit-drop on';
+}
+
+function pickEditDN(rowId, rec) {
+  S.editing.selUse = rec;
+  document.getElementById(`editDNInput-${rowId}`).value = `${rec.estd_number} — ${rec.name}`;
+  document.getElementById(`editDNDrop-${rowId}`).className = 'cell-edit-drop';
+  document.getElementById(`editSaveBtn-${rowId}`).disabled = false;
+}
+
+function onEditKey(e, rowId) {
+  if (e.key === 'Escape') {
+    cancelEdit();
+  } else if (e.key === 'Enter') {
+    if (S.editing.mode === 'ref') {
+      if (S.editing.selUse) saveEditDN(rowId);
+    } else if (S.editing.mode === 'compName') {
+      saveEditCompName(rowId);
+    }
+  }
+}
+
+async function saveEditDN(rowId) {
+  if (!S.editing || !S.editing.selUse) return;
+  const newUseId = S.editing.selUse.id;
+  S.editing = null;
+
+  // Оптимистично
+  const idx = S.components.findIndex(c => c.id === rowId);
+  if (idx >= 0) {
+    S.components[idx].primary_use = newUseId;
+  }
+  renderRegistered();
+
+  try {
+    if (typeof grist !== 'undefined') {
+      await grist.selectedTable.update({
+        id: rowId,
+        fields: { primary_use: newUseId }
+      });
+      loadComponents();
+    }
+  } catch(e) {
+    alert('Ошибка сохранения: ' + e.message);
+    loadComponents();
+  }
+}
+
+/* Стабильный цвет по имени пользователя */
+function avatarColor(name) {
+  // Хардкод для системных авторов
+  const lc = name.trim().toLowerCase();
+  if (lc === 'импорт' || lc === 'import') return '#9E9C94';
+
+  const colors = ['#1E4ED8','#0D6E4E','#92400E','#991B1B','#5B21B6','#0369A1','#166534','#B45309','#7C3AED','#BE185D'];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0;
+  return colors[Math.abs(h) % colors.length];
+}
+
+/* ═══════════════════════════════════
+   FORM — PICK KIND (from browser only)
+═══════════════════════════════════ */
+function pickKind(kind) {
+  S.selKind = kind;
+  updatePreview();
+  renderRegistered();
+}
+
+/* ═══════════════════════════════════
+   FORM — USE AUTOCOMPLETE
+═══════════════════════════════════ */
+function onUseInput() {
+  const q = document.getElementById('useInput').value.trim().toLowerCase();
+  S.selUse = null;
+  S.useAcIdx = -1;
+  document.getElementById('useHint').textContent = 'Не выбрано';
+  if (!q) { hideDrop('useDrop'); return; }
+  const items = S.components.filter(r =>
+    (r.estd_number||'').toLowerCase().includes(q) ||
+    (r.name||'').toLowerCase().includes(q)
+  ).slice(0, 20);
+  renderAcComponents('useDrop', items, i => pickUse(items[i]));
+}
+
+function onUseKey(e) {
+  acKey(e, 'useDrop', S, 'useAcIdx', () => {
+    const items = getVisibleAcItems('useDrop');
+    if (S.useAcIdx >= 0 && items[S.useAcIdx]) pickUse(items[S.useAcIdx]._rec);
+  });
+}
+
+function pickUse(r) {
+  S.selUse = r;
+  document.getElementById('useInput').value = `${r.estd_number} — ${r.name}`;
+  document.getElementById('useHint').textContent = `Связан с ${r.estd_number}`;
+  hideDrop('useDrop');
+}
+
+/* ═══════════════════════════════════
+   PREVIEW
+═══════════════════════════════════ */
+function updatePreview() {
+  const kind = S.selKind;
+  const nameVal = document.getElementById('nameInput').value.trim();
+  const prefix = (document.getElementById('prefixInput').value || '').trim().replace(/\.+$/, '');
+
+  const prevDN = document.getElementById('prevDN');
+  const btnAdd = document.getElementById('btnAdd');
+  const hint = document.getElementById('kindPickHint');
+
+  if (!kind) {
+    prevDN.value = '—————.—————';
+    btnAdd.disabled = true;
+    hint.style.display = 'block';
+    return;
+  }
+  hint.style.display = 'none';
+
+  const nxt = nextFreeSerial(kind.code, prefix);
+  if (!nxt) {
+    prevDN.value = 'Все занято';
+    btnAdd.disabled = true;
+    return;
+  }
+
+  prevDN.value = prefix ? `${prefix}.${kind.code}.${nxt}` : `${kind.code}.${nxt}`;
+  btnAdd.disabled = !nameVal;
+}
+
+function onPrefixInput() {
+  updatePreview();
+}
+
+function refreshPrefixList() {
+  // Собираем уникальные префиксы из существующих записей
+  const used = new Set();
+  S.components.forEach(c => {
+    if (c.org_prefix) {
+      const p = String(c.org_prefix).trim().replace(/\.+$/, '');
+      if (p) used.add(p);
+    }
+  });
+  // Базовые варианты всегда присутствуют
+  ['ЛМАП', 'ЭЛМАП'].forEach(p => used.add(p));
+  // Сортируем для стабильности
+  const sorted = Array.from(used).sort();
+  const datalist = document.getElementById('prefixList');
+  if (datalist) {
+    datalist.innerHTML = sorted.map(p => `<option value="${esc(p)}">`).join('');
+  }
+}
+
+// also trigger preview on name input
+document.getElementById('nameInput').addEventListener('input', updatePreview);
+
+/* ═══════════════════════════════════
+   ADD COMPONENT
+═══════════════════════════════════ */
+async function addComponent() {
+  const kind = S.selKind;
+  const name = document.getElementById('nameInput').value.trim();
+  if (!kind || !name) return;
+
+  const prefixRaw = (document.getElementById('prefixInput').value || '').trim().replace(/\.+$/, '');
+  const prefix = prefixRaw || 'ЛМАП';
+
+  const serial = nextFreeSerial(kind.code, prefix);
+  if (!serial) return;
+
+  const btn = document.getElementById('btnAdd');
+  btn.disabled = true;
+  btn.textContent = 'Сохранение…';
+
+  // Передаём estd_kind, name, org_prefix. serial и estd_number — формульные.
+  const fields = {
+    estd_kind: kind.id,
+    name: name,
+    org_prefix: prefix,
+  };
+
+  // primary_use — только ссылка на существующий компонент
+  if (S.selUse) {
+    fields.primary_use = S.selUse.id;
+  }
+
+  // Оптимистичное добавление
+  const tempId = -Date.now();
+  const dn = prefix ? `${prefix}.${kind.code}.${serial}` : `${kind.code}.${serial}`;
+  const cacheKey = `${prefix}:${kind.code}`;
+  const optimisticRecord = {
+    id: tempId,
+    estd_number: dn,
+    name: name,
+    estd_kind: kind.id,
+    estd_kind_name: kind.name,
+    org_prefix: prefix,
+    primary_use: S.selUse ? S.selUse.id : 0,
+  };
+  S.components.push(optimisticRecord);
+  if (!serialCache[cacheKey]) serialCache[cacheKey] = new Set();
+  serialCache[cacheKey].add(serial);
+  S.recent.unshift({ id: tempId, estd_number: dn, name, estd_kind_name: kind.name });
+
+  renderRegistered();
+  renderSidebar();
+
+  try {
+    if (typeof grist !== 'undefined') {
+      const created = await grist.selectedTable.create({ fields });
+      const newId = Array.isArray(created) ? created[0] : (created.id || created);
+
+      // PATCH — перезапускаем trigger-формулу serial
+      if (newId) {
+        const idx = S.components.findIndex(c => c.id === tempId);
+        if (idx >= 0) S.components[idx].id = newId;
+
+        try {
+          await grist.selectedTable.update({
+            id: newId,
+            fields: { estd_kind: kind.id }
+          });
+        } catch(patchErr) {
+          console.warn('PATCH trigger failed:', patchErr);
+        }
+      }
+
+      // Подтягиваем актуальные данные (с пересчитанными формулами)
+      loadComponents();
+    }
+
+    // Сброс формы
+    document.getElementById('nameInput').value = '';
+    document.getElementById('useInput').value = '';
+    document.getElementById('useHint').textContent = 'Не выбрано';
+    S.selUse = null;
+    updatePreview();
+
+    btn.textContent = '✓ Зарегистрировано';
+    btn.style.background = 'var(--grn)';
+    setTimeout(() => {
+      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер';
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 2500);
+
+  } catch(e) {
+    // Откат
+    S.components = S.components.filter(c => c.id !== tempId);
+    if (serialCache[cacheKey]) serialCache[cacheKey].delete(serial);
+    S.recent = S.recent.filter(r => r.id !== tempId);
+    renderRegistered();
+    renderSidebar();
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер';
+    alert('Ошибка при сохранении: ' + e.message);
+  }
+}
+
+/* ═══════════════════════════════════
+   AUTOCOMPLETE HELPERS
+═══════════════════════════════════ */
+function renderAc(dropId, items, onPick) {
+  const drop = document.getElementById(dropId);
+  if (!items.length) { hideDrop(dropId); return; }
+  drop.innerHTML = items.map((r,i) => `
+    <div class="ac-item" data-idx="${i}">
+      <span class="ac-code">${esc(r.code)}</span>
+      <span class="ac-name">${esc(r.name)}</span>
+    </div>`).join('');
+  drop.querySelectorAll('.ac-item').forEach((el,i) => {
+    el._rec = items[i];
+    el.addEventListener('mousedown', e => { e.preventDefault(); });
+    el.addEventListener('click', () => onPick(i));
+  });
+  drop.className = 'ac-drop on';
+}
+
+function renderAcComponents(dropId, items, onPick) {
+  const drop = document.getElementById(dropId);
+  if (!items.length) { hideDrop(dropId); return; }
+  drop.innerHTML = items.map((r,i) => `
+    <div class="ac-item" data-idx="${i}">
+      <span class="ac-code">${esc(r.estd_number||'')}</span>
+      <span class="ac-name">${esc(r.name||'')}</span>
+    </div>`).join('');
+  drop.querySelectorAll('.ac-item').forEach((el,i) => {
+    el._rec = items[i];
+    el.addEventListener('mousedown', e => { e.preventDefault(); });
+    el.addEventListener('click', () => onPick(i));
+  });
+  drop.className = 'ac-drop on';
+}
+
+function hideDrop(dropId) { const el = document.getElementById(dropId); if (el) el.className = 'ac-drop'; }
+
+function getVisibleAcItems(dropId) {
+  return [...document.getElementById(dropId).querySelectorAll('.ac-item')];
+}
+
+function acKey(e, dropId, stateObj, idxKey, onEnter) {
+  const items = getVisibleAcItems(dropId);
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); stateObj[idxKey] = Math.min(stateObj[idxKey]+1, items.length-1); highlightAc(dropId, stateObj[idxKey]); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); stateObj[idxKey] = Math.max(stateObj[idxKey]-1, 0); highlightAc(dropId, stateObj[idxKey]); }
+  else if (e.key === 'Enter') { e.preventDefault(); onEnter(); }
+  else if (e.key === 'Escape') hideDrop(dropId);
+}
+
+function highlightAc(dropId, idx) {
+  getVisibleAcItems(dropId).forEach((el,i) => el.className = 'ac-item' + (i===idx?' hov':''));
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ac-wrap')) {
+    hideDrop('kindDrop');
+    hideDrop('useDrop');
+  }
+});
+
+/* ═══════════════════════════════════
+   UTILS
+═══════════════════════════════════ */
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function hi(s, q) {
+  if (!q) return esc(s);
+  const escapedQ = esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return esc(s).replace(new RegExp(escapedQ,'gi'), m => `<mark>${m}</mark>`);
+}
+function jstr(r) {
+  try { return JSON.stringify(r).replace(/'/g,"&#39;"); } catch(e) { return '{}'; }
+}
+
+/* ═══════════════════════════════════
+   BOOT
+═══════════════════════════════════ */
+initGrist();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "@altair666/widget-estdnumber",
+  "description": "БД номеров по классификатору ЕСТД",
+  "homePage": "https://github.com/Altair666/widget-estdnumber",
+  "version": "0.1.0",
+  "grist": {
+    "name": "ESTD Number",
+    "url": "https://altair666.github.io/widget-estdnumber/index.html",
+    "widgetId": "@altair666/widget-estdnumber",
+    "published": true,
+    "accessLevel": "full",
+    "renderAfterReady": true,
+    "description": "База номеров технологических процессов с классификатором ЕСТД",
+    "authors": [{"name": "Altair666","url": "https://github.com/Altair666"}],
+    "isGristLabsMaintained": false
+  }
+}
