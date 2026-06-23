@@ -24,18 +24,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 /* ── LAYOUT ── */
 .app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto 1fr;height:100vh;overflow:hidden}
-.topbar{grid-column:2;grid-row:1;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:flex-end;justify-content:space-between;padding:0 12px 0 0}
-.tabbar{display:flex;align-items:flex-end}
-.tab-btn{font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);background:var(--surf2);border:1px solid var(--brd);border-bottom:1px solid var(--brd);border-radius:0;padding:6px 18px;cursor:pointer;transition:background .1s,color .1s;margin-bottom:-1px}
-.tab-btn:hover{background:var(--surf3);color:var(--tx)}
-.tab-btn.active{background:var(--bg);color:var(--tx);border-bottom-color:var(--bg);font-weight:700;z-index:2}
-.search-wrap{flex:1;position:relative;max-width:380px}
-.search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
-.search-input{width:100%;height:30px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 28px 0 30px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;transition:border-color .15s,background .15s}
-.search-input:focus{border-color:var(--acc);background:var(--surf)}
-.search-input::placeholder{color:var(--tx3)}
-.search-clear{position:absolute;right:19px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--tx3);display:none;background:none;border:none;padding:2px;line-height:1}
-.search-clear.on{display:flex}
+.topbar{grid-column:2;grid-row:1;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:flex-end;padding:0 12px}
 .conn-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
 .conn-dot.ok{background:var(--grn)}
 .conn-lbl{font-size:11px;color:var(--tx3)}
@@ -60,37 +49,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 /* ── PANELS ── */
 .panel{background:var(--surf);border:1px solid var(--brd);border-radius:0;overflow:hidden}
-#pSearch>.panel:first-child,#pBrowse>.panel:first-child{border-top:none}
-#pBrowse>.panel:first-child>.ph,#pSearch>.panel:first-child>.ph{background:var(--bg)}
+#pBrowse>.panel:first-child{border-top:none}
+#pBrowse>.panel:first-child>.ph{background:var(--bg)}
 .ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
 .ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
 .pb{padding:10px 12px}
-
-/* ── SEARCH RESULTS ── */
-.res-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);cursor:pointer;transition:background .1s;margin:0 -8px}
-.res-item:hover{background:var(--acc-bg)}
-.res-item.sel{background:var(--acc-bg);border-left:2px solid var(--acc);padding-left:6px}
-.res-dn{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:4pt;padding:2px 6px;flex-shrink:0;min-width:96px;text-align:center}
-.res-name{font-size:12px;color:var(--tx);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.res-kind{font-size:11px;color:var(--tx3);flex-shrink:0;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-/* ── REL TREE ── */
-.tree-root{display:flex;flex-direction:column;gap:2px}
-.tree-node{display:flex;align-items:center;gap:6px;padding:0 8px;height:30px;border-radius:var(--r);border:1px solid transparent;transition:background .1s,border-color .1s;box-sizing:border-box}
-.tree-node:hover{background:var(--surf2)}
-.tree-node.target{background:var(--acc-bg);border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-brd)}
-.tree-node.target:hover{background:var(--acc-bg)}
-.tree-node.current{background:var(--warn-bg);border-color:var(--warn-brd)}
-.tree-toggle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;background:transparent;color:var(--tx3);cursor:pointer;flex-shrink:0;padding:0;border-radius:4pt}
-.tree-toggle:hover{background:var(--brd);color:var(--tx)}
-.tree-toggle.empty{cursor:default;pointer-events:none}
-.tree-content{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer}
-.tree-count{font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:0 6px;line-height:14px;min-width:18px;text-align:center;flex-shrink:0}
-.tree-node.target .tree-count{background:var(--acc);color:#fff;border-color:var(--acc)}
-
-/* ── REL TREE — старые элементы для обратной совместимости ── */
-.rel-dn{font-family:var(--mono);font-size:11px;color:var(--tx);flex-shrink:0}
-.rel-nm{font-size:12px;color:var(--tx2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── ESTD BROWSER ── */
 .bc{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
@@ -105,7 +68,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .bs-code{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--tx);line-height:1;flex-shrink:0;text-align:center;min-width:120px}
 .bs-path{flex:1;min-width:0}
 .bs-row{font-size:15px;color:var(--tx);line-height:1.4}
-.browse-step{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 16px;background:var(--surf2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);font-size:11px;color:var(--tx2);min-height:17px}
+.browse-step{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 16px;background:var(--surf2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);font-size:14px;font-weight:700;color:var(--tx);min-height:17px}
 .browse-step:empty{display:none}
 
 /* Карточки классов — строки */
@@ -176,7 +139,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tag-green{background:var(--grn-bg);color:var(--grn)}
 .badge{font-size:10px;padding:1px 6px;border-radius:4pt;font-weight:500}
 .badge-level{background:var(--surf3);color:var(--tx2)}
-mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 
 /* ── REGISTERED TABLE ── */
 .reg-table{width:100%;border-collapse:collapse;font-size:12px}
@@ -265,10 +227,6 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 
 <!-- TOPBAR -->
 <header class="topbar">
-  <div class="tabbar">
-    <button class="tab-btn active" id="tabBtnReg" onclick="switchTab('reg')">Регистрация номера</button>
-    <button class="tab-btn" id="tabBtnStruct" onclick="switchTab('structure')">Структура изделия</button>
-  </div>
   <div class="topbar-status">
     <div class="conn-dot" id="connDot"></div>
     <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
@@ -291,45 +249,13 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 <!-- MAIN -->
 <main class="main" id="main">
 
-  <!-- SEARCH MODE (вкладка «Структура изделия») -->
-  <div id="pSearch" style="display:none;flex-direction:column;gap:0">
-
-    <div class="panel">
-      <div class="ph"></div>
-      <div class="browser-search-wrap">
-        <svg class="browser-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input class="search-input" id="searchInput" placeholder="Поиск по номеру, наименованию…" autocomplete="off">
-        <button class="search-clear" id="searchClear" onclick="clearSearch()">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="panel" id="pSearchResults">
-      <div class="ph">
-        <span class="ph-title" id="searchTitle">Результаты поиска</span>
-        <span class="tag tag-blue" id="searchCount"></span>
-      </div>
-      <div class="pb" id="searchBody"></div>
-    </div>
-
-    <div class="panel" id="pRel" style="display:none">
-      <div class="ph">
-        <span class="ph-title">Связи компонента</span>
-        <button class="btn-sm" onclick="closeRel()">✕ закрыть</button>
-      </div>
-      <div class="pb" id="relBody"></div>
-    </div>
-
-  </div>
-
   <!-- BROWSE MODE -->
   <div id="pBrowse" style="display:flex;flex-direction:column;gap:0">
 
     <!-- ESTD browser -->
     <div class="panel">
       <div class="ph">
-        <span class="ph-title">Классификатор ЕСТД</span>
+        <span class="ph-title">КЛАССИФИКАТОР ОК ЕСТД</span>
         <div class="bc" id="bc"></div>
       </div>
       <!-- Поиск вида внутри браузера -->
@@ -348,7 +274,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 
     <!-- ADD FORM -->
     <div class="panel">
-      <div class="ph"><span class="ph-title">Регистрация компонента</span></div>
+      <div class="ph"></div>
       <div class="pb">
 
         <!-- form row: prefix + formed number + name -->
@@ -376,7 +302,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 
         <!-- hint when no kind picked -->
         <div id="kindPickHint" style="font-size:11px;color:var(--tx3);margin-bottom:10px;display:none">
-          Выберите вид в блоке «Классификатор ЕСТД» выше
+          Выберите вид в блоке «Классификатор ОК ЕСТД» выше
         </div>
 
         <!-- primary_use -->
@@ -410,19 +336,16 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.4</footer>
+<footer class="ver-footer">v0.5</footer>
 
 <script>
 /* ═══════════════════════════════════
    STATE
 ═══════════════════════════════════ */
 const S = {
-  activeTab: 'reg',  // 'reg' (Регистрация номера) | 'structure' (Структура изделия)
   classifier: [],   // ESTD_classifier records
   components: [],   // Estd_components records
   recent: [],
-  searchQ: '',
-  selResult: null,
   // browse
   browseLevel: null, // null=classes, code=drilled
   browsePath: [],    // [{code,name,level}]
@@ -436,8 +359,6 @@ const S = {
   browserKindAcIdx: -1,
   // inline edit
   editing: null, // { rowId: number, mode: 'ref'|'compName', selUse: ... }
-  relExpanded: null, // Set<id> — какие узлы дерева раскрыты
-  relRootId: null,   // id корня текущего дерева (для инвалидации при смене)
   // lazy classifier
   classifierMode: 'full',       // 'lazy' | 'full'
   classifierLoadedParents: null, // Set<string> — какие parent_code уже загружены
@@ -905,44 +826,6 @@ function isSerialFree(kindCode, prefix, serial) {
   return !(serialCache[key] || new Set()).has(s);
 }
 
-/* ═══════════════════════════════════
-   SEARCH
-═══════════════════════════════════ */
-document.getElementById('searchInput').addEventListener('input', function() {
-  S.searchQ = this.value.trim();
-  document.getElementById('searchClear').className = 'search-clear' + (S.searchQ ? ' on' : '');
-  S.selResult = null;
-  render();
-});
-
-function clearSearch() {
-  document.getElementById('searchInput').value = '';
-  S.searchQ = '';
-  S.selResult = null;
-  document.getElementById('searchClear').className = 'search-clear';
-  render();
-}
-
-function doSearch(q) {
-  const lq = q.toLowerCase();
-  return S.components.filter(r =>
-    (r.estd_number||'').toLowerCase().includes(lq) ||
-    (r.name||'').toLowerCase().includes(lq) ||
-    (r.estd_kind_name||'').toLowerCase().includes(lq)
-  ).slice(0, 50);
-}
-
-function selectResult(r) {
-  // Сброс состояния дерева при смене выбранного компонента
-  if (!S.selResult || S.selResult.id !== r.id) {
-    S.relExpanded = null;
-    S.relRootId = null;
-  }
-  S.selResult = r;
-  addRecent(r);
-  render();
-}
-
 function addRecent(r) {
   S.recent = [r, ...S.recent.filter(x => x.id !== r.id)].slice(0, 8);
   renderSidebar();
@@ -965,32 +848,12 @@ function saveOptions() {
   }
 }
 
-function closeRel() { S.selResult = null; render(); }
-
-/* ═══════════════════════════════════
-   TABS
-═══════════════════════════════════ */
-function switchTab(tab) {
-  S.activeTab = tab;
-  document.getElementById('tabBtnReg').classList.toggle('active', tab === 'reg');
-  document.getElementById('tabBtnStruct').classList.toggle('active', tab === 'structure');
-  render();
-}
-
 /* ═══════════════════════════════════
    RENDER ROUTER
 ═══════════════════════════════════ */
 function render() {
-  const tab2 = S.activeTab === 'structure';
-  document.getElementById('pSearch').style.display = tab2 ? 'flex' : 'none';
-  document.getElementById('pBrowse').style.display = tab2 ? 'none' : 'flex';
-  if (tab2) {
-    renderSearch();
-    if (S.selResult) renderRel(); else document.getElementById('pRel').style.display = 'none';
-  } else {
-    renderBrowse();
-    updatePreview();
-  }
+  renderBrowse();
+  updatePreview();
 }
 
 function renderAll() { renderSidebar(); render(); }
@@ -1032,15 +895,7 @@ async function goTo(id) {
   const r = S.components.find(x => x.id === id);
   if (!r) return;
   addRecent(r);
-  if (S.activeTab === 'reg') {
-    await openKindForComponent(r);
-  } else {
-    document.getElementById('searchInput').value = r.estd_number;
-    S.searchQ = r.estd_number;
-    document.getElementById('searchClear').className = 'search-clear on';
-    S.selResult = r;
-    switchTab('structure');
-  }
+  await openKindForComponent(r);
 }
 
 /* На вкладке «Регистрация номера» клик по избранному/последнему открывает вид этого компонента в браузере классификатора */
@@ -1095,144 +950,10 @@ async function goToKindCode(code) {
     }
   }
   if (!kind) return;
-  if (S.activeTab !== 'reg') switchTab('reg');
   pickKind(kind);
   await buildPathForKind(kind);
   renderBrowse();
   renderRegistered();
-}
-
-/* ═══════════════════════════════════
-   SEARCH RENDER
-═══════════════════════════════════ */
-function renderSearch() {
-  document.getElementById('searchTitle').textContent = 'Результаты поиска';
-  const body = document.getElementById('searchBody');
-  if (!S.searchQ) {
-    document.getElementById('searchCount').textContent = '';
-    body.innerHTML = `<div class="empty"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Введите номер или наименование для поиска</div>`;
-    return;
-  }
-  const results = doSearch(S.searchQ);
-  document.getElementById('searchCount').textContent = results.length;
-  if (!results.length) {
-    body.innerHTML = `<div class="empty"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Ничего не найдено</div>`;
-    return;
-  }
-  body.innerHTML = results.map(r => `
-    <div class="res-item ${S.selResult&&S.selResult.id===r.id?'sel':''}" onclick='selectResult(${jstr(r)})'>
-      <span class="res-dn">${esc(r.estd_number||'—')}</span>
-      <span class="res-name">${hi(r.name||'—', S.searchQ)}</span>
-      <span class="res-kind">${esc(r.estd_kind_name||'')}</span>
-    </div>`).join('');
-}
-
-/* ═══════════════════════════════════
-   REL PANEL — иерархическое дерево
-═══════════════════════════════════ */
-function renderRel() {
-  const r = S.selResult;
-  document.getElementById('pRel').style.display = 'block';
-  const body = document.getElementById('relBody');
-
-  // 1. Поднимаемся до корня (компонента без primary_use)
-  let root = r;
-  const visited = new Set([r.id]);
-  while (root.primary_use && root.primary_use > 0) {
-    const parent = S.components.find(x => x.id === root.primary_use);
-    if (!parent) break;
-    if (visited.has(parent.id)) break; // защита от циклов
-    visited.add(parent.id);
-    root = parent;
-  }
-
-  // 2. Собираем "путь" от корня до выбранного — эти узлы развернуть автоматически
-  const pathIds = new Set();
-  let cur = r;
-  while (cur) {
-    pathIds.add(cur.id);
-    if (!cur.primary_use || cur.primary_use <= 0) break;
-    const p = S.components.find(x => x.id === cur.primary_use);
-    if (!p || pathIds.has(p.id)) break;
-    cur = p;
-  }
-
-  // 3. Инициализируем S.relExpanded если ещё не было
-  if (!S.relExpanded || S.relRootId !== root.id) {
-    S.relExpanded = new Set(pathIds);
-    // также разворачиваем поддерево выбранного на 1 уровень вниз
-    S.relExpanded.add(r.id);
-    S.relRootId = root.id;
-  }
-
-  // 4. Рендерим рекурсивно от корня
-  let html = '<div class="tree-root">';
-  html += renderTreeNode(root, 0, r.id, new Set());
-  html += '</div>';
-
-  // Подсказка если корень = выбранный
-  if (root.id === r.id) {
-    const hasChildren = S.components.some(x => x.primary_use === r.id);
-    if (!hasChildren) {
-      html += `<div style="font-size:11px;color:var(--tx3);padding:8px 0 0;text-align:center;font-style:italic">Компонент не связан с другими записями</div>`;
-    }
-  }
-
-  body.innerHTML = html;
-}
-
-function renderTreeNode(node, depth, targetId, seen) {
-  if (seen.has(node.id)) {
-    return `<div class="tree-node" style="padding-left:${8 + depth*18}px;padding-right:8px">
-      <span class="tree-toggle empty"></span>
-      <span class="rel-dn">${esc(node.estd_number||'')}</span>
-      <span class="rel-nm" style="color:var(--red);font-style:italic">(цикл)</span>
-    </div>`;
-  }
-  const localSeen = new Set(seen); localSeen.add(node.id);
-
-  const children = S.components.filter(x => x.primary_use === node.id);
-  const hasChildren = children.length > 0;
-  const isExpanded = S.relExpanded.has(node.id);
-  const isTarget = node.id === targetId;
-  const isCurrent = S.selResult && S.selResult.id === node.id;
-
-  let cls = 'tree-node';
-  if (isTarget) cls += ' target';
-  if (isCurrent && !isTarget) cls += ' current';
-
-  let html = `<div class="${cls}" style="padding-left:${8 + depth*18}px;padding-right:8px">`;
-
-  if (hasChildren) {
-    html += `<button class="tree-toggle" onclick="toggleRelNode(${node.id})">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform:rotate(${isExpanded?90:0}deg);transition:transform .15s">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>
-    </button>`;
-  } else {
-    html += `<span class="tree-toggle empty"></span>`;
-  }
-
-  html += `<span class="tree-content" onclick='selectResult(${jstr(node)})'>
-    <span class="rel-dn">${esc(node.estd_number||'')}</span>
-    <span class="rel-nm">${esc(node.name||'')}</span>
-    ${hasChildren ? `<span class="tree-count">${children.length}</span>` : ''}
-  </span>`;
-  html += `</div>`;
-
-  if (hasChildren && isExpanded) {
-    children.forEach(ch => {
-      html += renderTreeNode(ch, depth + 1, targetId, localSeen);
-    });
-  }
-
-  return html;
-}
-
-function toggleRelNode(id) {
-  if (S.relExpanded.has(id)) S.relExpanded.delete(id);
-  else S.relExpanded.add(id);
-  renderRel();
 }
 
 /* ═══════════════════════════════════
@@ -1257,7 +978,7 @@ function renderBrowse() {
   }
 
   if (!path.length) {
-    stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(TOP_LEVEL))}</span>`;
+    stepEl.innerHTML = `<span>${esc(levelLabel(TOP_LEVEL))}</span>`;
     const classes = S.classifier.filter(r => r.level === TOP_LEVEL);
     body.innerHTML = `<div class="cls-list">${classes.map(c => `
       <div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
@@ -1273,23 +994,24 @@ function renderBrowse() {
     if (cur.level === LEAF_LEVEL) {
       const canExtend = hasExtOptions(cur.code);
       if (S.showExtPicker) {
-        stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(EXT_LEVEL))} (необязательно)</span>
-          <button class="btn-sm" onclick="toggleExtPicker()">← Назад к регистрации</button>`;
+        stepEl.innerHTML = `<span>${esc(levelLabel(EXT_LEVEL))}</span>`;
         const ext = getNodeChildren(cur.code);
-        body.innerHTML = ext.length
-          ? `<div class="sub-list">${ext.map(c => `
-              <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
-                <span class="sub-row-code">${c.code}</span>
-                <span class="sub-row-name">${esc(c.name)}</span>
-              </div>`).join('')}</div>`
-          : `<div class="empty">Нет вариантов наименования операции для этого метода</div>`;
+        const cancelRow = `<div class="sub-row" onclick="toggleExtPicker()">
+          <span class="sub-row-code">←</span>
+          <span class="sub-row-name">Отменить — вернуться к регистрации без наименования операции</span>
+        </div>`;
+        body.innerHTML = `<div class="sub-list">${cancelRow}${ext.map(c => `
+          <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+            <span class="sub-row-code">${c.code}</span>
+            <span class="sub-row-name">${esc(c.name)}</span>
+          </div>`).join('')}</div>` + (ext.length ? '' : `<div class="empty">Нет вариантов наименования операции для этого метода</div>`);
       } else {
-        stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(LEAF_LEVEL))}</span>` +
+        stepEl.innerHTML = `<span>${esc(levelLabel(LEAF_LEVEL))}</span>` +
           (canExtend ? `<button class="btn-sm" onclick="toggleExtPicker()">+ Добавить наименование операции</button>` : '');
         body.innerHTML = '';
       }
     } else {
-      stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(cur.level))}</span>`;
+      stepEl.innerHTML = `<span>${esc(levelLabel(cur.level))}</span>`;
       body.innerHTML = '';
     }
     return;
@@ -1302,7 +1024,7 @@ function renderBrowse() {
     return;
   }
 
-  stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(children[0].level))}</span>`;
+  stepEl.innerHTML = `<span>${esc(levelLabel(children[0].level))}</span>`;
   body.innerHTML = `<div class="sub-list">${children.map(c => `
     <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
       <span class="sub-row-code">${c.code}</span>
@@ -1751,7 +1473,7 @@ function updatePreview() {
     hint.style.display = 'block';
     hint.textContent = S.showExtPicker
       ? 'Выберите наименование операции выше либо нажмите «Назад к регистрации»'
-      : 'Выберите вид в блоке «Классификатор ЕСТД» выше';
+      : 'Выберите вид в блоке «Классификатор ОК ЕСТД» выше';
     return;
   }
   hint.style.display = 'none';
@@ -1963,14 +1685,6 @@ document.addEventListener('click', e => {
    UTILS
 ═══════════════════════════════════ */
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function hi(s, q) {
-  if (!q) return esc(s);
-  const escapedQ = esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  return esc(s).replace(new RegExp(escapedQ,'gi'), m => `<mark>${m}</mark>`);
-}
-function jstr(r) {
-  try { return JSON.stringify(r).replace(/'/g,"&#39;"); } catch(e) { return '{}'; }
-}
 
 /* ═══════════════════════════════════
    BOOT
