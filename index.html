@@ -168,6 +168,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .cell-edit-wrap{position:relative;flex:1;min-width:0}
 .cell-edit-drop{position:absolute;top:24px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12);text-align:left;display:none}
 .cell-edit-drop.on{display:block}
+.cell-edit-drop.up{top:auto;bottom:24px;box-shadow:0 -4px 12px rgba(0,0,0,.12)}
 
 /* Reset td padding/alignment for editable cells to keep row heights uniform */
 .reg-table td.editable-cell{padding:4px 8px;vertical-align:middle}
@@ -330,7 +331,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.9</footer>
+<footer class="ver-footer">v0.10</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -986,7 +987,7 @@ function renderBrowse() {
   }
 
   if (!path.length) {
-    stepEl.innerHTML = `<span>${esc(levelLabel(TOP_LEVEL))}</span>`;
+    stepEl.innerHTML = '';
     const classes = S.classifier.filter(r => r.level === TOP_LEVEL);
     body.innerHTML = `<div class="cls-list">${classes.map(c => `
       <div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
@@ -1005,8 +1006,8 @@ function renderBrowse() {
   // через breadcrumb пропадает возможность зарегистрировать его без расширения.
   if (cur.level === LEAF_LEVEL) {
     const canExtend = hasExtOptions(cur.code);
+    stepEl.innerHTML = `<span>${esc(levelLabel(LEAF_LEVEL))}</span>`;
     if (S.showExtPicker) {
-      stepEl.innerHTML = `<span>${esc(levelLabel(EXT_LEVEL))}</span>`;
       const ext = getNodeChildren(cur.code);
       const cancelRow = `<div class="sub-row" onclick="toggleExtPicker()">
         <span class="sub-row-code">←</span>
@@ -1018,7 +1019,6 @@ function renderBrowse() {
           <span class="sub-row-name">${esc(c.name)}</span>
         </div>`).join('')}</div>` + (ext.length ? '' : `<div class="empty">Нет вариантов наименования операции для этого метода</div>`);
     } else {
-      stepEl.innerHTML = `<span>${esc(levelLabel(LEAF_LEVEL))}</span>`;
       body.innerHTML = canExtend ? `<div class="sub-list">
         <div class="sub-row" onclick="toggleExtPicker()">
           <span class="sub-row-code">+</span>
@@ -1047,7 +1047,7 @@ function renderBrowse() {
     return;
   }
 
-  stepEl.innerHTML = `<span>${esc(levelLabel(children[0].level))}</span>`;
+  stepEl.innerHTML = `<span>${esc(levelLabel(cur.level))}</span>`;
   body.innerHTML = `<div class="sub-list">${children.map(c => `
     <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
       <span class="sub-row-code">${c.code}</span>
@@ -1239,7 +1239,7 @@ function renderRegistered() {
       </tr>
     </thead>
     <tbody>
-      ${items.map(c => {
+      ${items.map((c, idx) => {
         const useId = c.primary_use;
         const linked = (useId && useId > 0) ? byId[useId] : null;
         const author = c.created_by || '';
@@ -1252,6 +1252,8 @@ function renderRegistered() {
         const editing = S.editing && S.editing.rowId === c.id;
         const editingDN = editing && S.editing.mode === 'ref';
         const editingCompName = editing && S.editing.mode === 'compName';
+        const editingUseName = editing && S.editing.mode === 'useName';
+        const dropUp = idx === items.length - 1;
 
         // Ячейка номера первичного применения (поиск/редактирование) и отдельная ячейка наименования (зеркало)
         let useDnCell, useNameCell;
@@ -1260,7 +1262,7 @@ function renderRegistered() {
           useDnCell = `<div class="cell-content">
             <div class="cell-edit-wrap">
               <input class="cell-edit-input mono" id="editDNInput-${c.id}" placeholder="Поиск..." autocomplete="off" value="${esc(selectedDN)}" oninput="onEditDNInput(${c.id})" onkeydown="onEditKey(event, ${c.id})">
-              <div class="cell-edit-drop" id="editDNDrop-${c.id}"></div>
+              <div class="cell-edit-drop" id="editDNDrop-${c.id}" ${dropUp ? 'data-up="1"' : ''}></div>
             </div>
             <button class="cell-edit-btn save" id="editSaveBtn-${c.id}" ${S.editing.selUse ? '' : 'disabled'} onclick="saveEditDN(${c.id})" title="Сохранить">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1278,7 +1280,28 @@ function renderRegistered() {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
             </button>
           </div>`;
-          useNameCell = `<div class="cell-content"><span class="cell-text reg-use-name">${linked ? esc(linked.name) : '—'}</span></div>`;
+          if (linked) {
+            // Компонент привязан — наименование заблокировано и зеркалит запись из Components
+            useNameCell = `<div class="cell-content"><span class="cell-text reg-use-name">${esc(linked.name)}</span></div>`;
+          } else if (editingUseName) {
+            useNameCell = `<div class="cell-content">
+              <input class="cell-edit-input" id="editUseNameInput-${c.id}" placeholder="Наименование…" autocomplete="off" value="${esc(c.primary_use_name||'')}" onkeydown="onEditKey(event,${c.id})">
+              <button class="cell-edit-btn save" onclick="saveEditUseName(${c.id})" title="Сохранить">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button class="cell-edit-btn cancel" onclick="cancelEdit()" title="Отмена">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>`;
+          } else {
+            // Компонент не привязан — наименование можно ввести вручную свободным текстом
+            useNameCell = `<div class="cell-content">
+              <span class="cell-text reg-use-name">${esc(c.primary_use_name||'—')}</span>
+              <button class="cell-edit-btn" onclick="startEditUseName(${c.id})" title="Редактировать">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+            </div>`;
+          }
         }
 
         // Ячейка наименования компонента (Номенклатура)
@@ -1337,6 +1360,11 @@ function startEditCompName(rowId) {
   renderRegistered();
 }
 
+function startEditUseName(rowId) {
+  S.editing = { rowId, mode: 'useName' };
+  renderRegistered();
+}
+
 function cancelEdit() {
   S.editing = null;
   renderRegistered();
@@ -1363,6 +1391,26 @@ async function saveEditCompName(rowId) {
   }
 }
 
+async function saveEditUseName(rowId) {
+  if (!S.editing) return;
+  const text = (document.getElementById(`editUseNameInput-${rowId}`)?.value || '').trim();
+  S.editing = null;
+
+  const idx = S.components.findIndex(c => c.id === rowId);
+  if (idx >= 0) S.components[idx].primary_use_name = text;
+  renderRegistered();
+
+  try {
+    if (typeof grist !== 'undefined') {
+      await grist.selectedTable.update({ id: rowId, fields: { primary_use_name: text } });
+      loadComponents();
+    }
+  } catch(e) {
+    alert('Ошибка сохранения: ' + e.message);
+    loadComponents();
+  }
+}
+
 function onEditDNInput(rowId) {
   const input = document.getElementById(`editDNInput-${rowId}`);
   const q = input.value.trim().toLowerCase();
@@ -1371,14 +1419,15 @@ function onEditDNInput(rowId) {
   document.getElementById(`editSaveBtn-${rowId}`).disabled = true;
 
   const drop = document.getElementById(`editDNDrop-${rowId}`);
-  if (!q) { drop.className = 'cell-edit-drop'; return; }
+  const upCls = drop.dataset.up ? ' up' : '';
+  if (!q) { drop.className = 'cell-edit-drop' + upCls; return; }
 
   const items = S.masterComponents.filter(r =>
     (r.decimal_number||'').toLowerCase().includes(q) ||
     (r.name||'').toLowerCase().includes(q)
   ).slice(0, 20);
 
-  if (!items.length) { drop.className = 'cell-edit-drop'; return; }
+  if (!items.length) { drop.className = 'cell-edit-drop' + upCls; return; }
 
   drop.innerHTML = items.map((r,i) => `
     <div class="ac-item" data-idx="${i}" style="text-align:left">
@@ -1390,7 +1439,7 @@ function onEditDNInput(rowId) {
     el.addEventListener('mousedown', e => e.preventDefault());
     el.addEventListener('click', () => pickEditDN(rowId, items[i]));
   });
-  drop.className = 'cell-edit-drop on';
+  drop.className = 'cell-edit-drop on' + upCls;
 }
 
 function pickEditDN(rowId, rec) {
@@ -1410,6 +1459,8 @@ function onEditKey(e, rowId) {
       if (S.editing.selUse) saveEditDN(rowId);
     } else if (S.editing.mode === 'compName') {
       saveEditCompName(rowId);
+    } else if (S.editing.mode === 'useName') {
+      saveEditUseName(rowId);
     }
   }
 }
