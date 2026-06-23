@@ -366,8 +366,8 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
           </div>
           <!-- name -->
           <div class="form-group">
-            <label class="form-label">Наименование компонента <span style="color:var(--red)">*</span></label>
-            <input class="form-input" id="nameInput" placeholder="Диод Д226А">
+            <label class="form-label">НАИМЕНОВАНИЕ ДОКУМЕНТА <span style="color:var(--red)">*</span></label>
+            <input class="form-input" id="nameInput" placeholder="ТЛ. Микроакселерометр одноосный">
           </div>
         </div>
 
@@ -407,7 +407,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.2</footer>
+<footer class="ver-footer">v0.3</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -443,11 +443,41 @@ const S = {
 };
 
 /* Уровни классификатора ЕСТД: вид документации (2 цифры) → вид техпроцесса (+1 цифра, 3 итого)
-   → метод выполнения (+2 цифры, 5 итого, лист — регистрируемый «вид») */
+   → метод выполнения (+2 цифры, 5 итого, лист — регистрируемый «вид»).
+   Для некоторых методов выполнения в КТО 1-85-151 есть расширенный код операции
+   (+2 цифры, 7 итого) — он хранится один раз с parent_code = голый 2-значный код
+   метода (напр. "01"), а не как 144 дубликата под каждым листом, поэтому
+   при просмотре листа дети по расширению ищутся отдельно (см. getExtChildren). */
 const TOP_LEVEL = 'Вид документации';
 const LEAF_LEVEL = 'Метод выполнения';
+const EXT_LEVEL = 'Расширенный код операции';
 const LEAF_CODE_LEN = 5;
+const EXT_CODE_LEN = 2;
 const SERIAL_LEN = 5;
+const KIND_CODE_RE = new RegExp(`^\\d{${LEAF_CODE_LEN}}(\\d{${EXT_CODE_LEN}})?$`);
+
+/* Узел терминален (регистрируемый), если у него нет обычных детей по parent_code
+   и (для листа-метода) нет шаблонных расширений по его 2-значному коду метода */
+function isTerminalCode(code) {
+  if (S.classifier.some(r => r.parent_code === code)) return false;
+  const methodCode = String(code).slice(-2);
+  if (String(code).length === LEAF_CODE_LEN && S.classifier.some(r => r.level === EXT_LEVEL && r.parent_code === methodCode)) return false;
+  return true;
+}
+
+/* Дети узла в дереве просмотра: для листа-метода виртуально подмешиваем
+   шаблонные расширения (parent_code = 2-значный код метода), склеивая код 7 цифр */
+function getNodeChildren(code) {
+  const direct = S.classifier.filter(r => r.parent_code === code);
+  if (String(code).length === LEAF_CODE_LEN) {
+    const methodCode = String(code).slice(-2);
+    const ext = S.classifier.filter(r => r.level === EXT_LEVEL && r.parent_code === methodCode);
+    if (ext.length) {
+      return ext.map(r => ({ ...r, code: code + r.code.slice(-EXT_CODE_LEN), parent_code: code }));
+    }
+  }
+  return direct;
+}
 
 const CACHE_KEY = 'estd_widget_classifier_v1'; // bump после изменения формата
 const CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -756,7 +786,7 @@ async function searchClassifierKinds(q) {
   const useAlt = qAlt !== q;
   if (!S.accessToken || !S.tokenBaseUrl) {
     return S.classifier.filter(r =>
-      r.level === LEAF_LEVEL &&
+      r.level === LEAF_LEVEL && isTerminalCode(r.code) &&
       (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
     ).slice(0, 30);
   }
@@ -779,7 +809,7 @@ async function searchClassifierKinds(q) {
     return records;
   } catch(e) {
     return S.classifier.filter(r =>
-      r.level === LEAF_LEVEL &&
+      r.level === LEAF_LEVEL && isTerminalCode(r.code) &&
       (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
     ).slice(0, 30);
   }
@@ -827,10 +857,10 @@ function computeNextSerials() {
     const parts = dn.split('.');
     if (parts.length < 2) return;
     const serial = parts[parts.length - 1].padStart(SERIAL_LEN, '0');
-    // Ищем код вида (метод выполнения, LEAF_CODE_LEN цифр)
+    // Ищем код вида (метод выполнения, 5 цифр, либо расширенный код операции, 7 цифр)
     let kindIdx = -1;
     for (let i = parts.length - 2; i >= 0; i--) {
-      if (new RegExp(`^\\d{${LEAF_CODE_LEN}}$`).test(parts[i])) { kindIdx = i; break; }
+      if (KIND_CODE_RE.test(parts[i])) { kindIdx = i; break; }
     }
     if (kindIdx === -1 || !/^\d+$/.test(serial)) return;
     const kindCode = parts[kindIdx];
@@ -1001,9 +1031,36 @@ async function goTo(id) {
 function extractKindCodeFromDN(dn) {
   const parts = (dn || '').split('.');
   for (let i = parts.length - 2; i >= 0; i--) {
-    if (new RegExp(`^\\d{${LEAF_CODE_LEN}}$`).test(parts[i])) return parts[i];
+    if (KIND_CODE_RE.test(parts[i])) return parts[i];
   }
   return null;
+}
+
+/* Найти вид по итоговому коду; для расширенного кода (7 цифр) реальной строки в
+   ESTD_classifier может не быть (расширения хранятся один раз как шаблон с
+   parent_code = голый код метода) — в этом случае материализуем настоящую
+   строку-копию под конкретным листом, чтобы на неё можно было сослаться через Ref */
+async function findOrCreateKindByCode(code) {
+  code = String(code);
+  let kind = S.classifier.find(k => k.code === code);
+  if (kind) return kind;
+  if (code.length !== LEAF_CODE_LEN + EXT_CODE_LEN) return null;
+  const leafCode = code.slice(0, LEAF_CODE_LEN);
+  const extSuffix = code.slice(-EXT_CODE_LEN);
+  const methodCode = leafCode.slice(-2);
+  const tpl = S.classifier.find(r => r.level === EXT_LEVEL && r.parent_code === methodCode && r.code.slice(-EXT_CODE_LEN) === extSuffix);
+  if (!tpl) return null;
+  try {
+    const result = await grist.docApi.applyUserActions([
+      ['AddRecord', 'ESTD_classifier', null, { code, name: tpl.name, level: EXT_LEVEL, parent_code: leafCode }]
+    ]);
+    kind = { id: result.retValues[0], code, name: tpl.name, level: EXT_LEVEL, parent_code: leafCode };
+    S.classifier.push(kind);
+    return kind;
+  } catch(e) {
+    console.warn('Не удалось материализовать расширенный код классификатора:', e);
+    return null;
+  }
 }
 
 async function openKindForComponent(r) {
@@ -1013,7 +1070,7 @@ async function openKindForComponent(r) {
 }
 
 async function goToKindCode(code) {
-  let kind = S.classifier.find(k => k.code === code && k.level === LEAF_LEVEL);
+  let kind = await findOrCreateKindByCode(code);
   if (!kind) {
     kind = await fetchClassifierNodeByCode(code);
     if (kind) {
@@ -1180,8 +1237,8 @@ function renderBrowse() {
     return;
   }
 
-  // Если последний выбранный — Вид, список не показываем
-  if (path.length && path[path.length-1].level === LEAF_LEVEL) {
+  // Если последний выбранный — терминальный вид (метод без расширения или расширенный код), список не показываем
+  if (path.length && isTerminalCode(path[path.length-1].code)) {
     body.innerHTML = '';
     return;
   }
@@ -1197,7 +1254,7 @@ function renderBrowse() {
   }
 
   const parentCode = path[path.length-1].code;
-  const children = S.classifier.filter(r => r.parent_code === parentCode);
+  const children = getNodeChildren(parentCode);
 
   if (!children.length) {
     body.innerHTML = '';
@@ -1225,9 +1282,15 @@ function renderBrowseSummary() {
 
 async function browseDrill(code, name, level) {
   S.browsePath.push({code, name, level});
-  if (level === LEAF_LEVEL) {
-    const kind = S.classifier.find(r => r.code === code);
+  if (level === EXT_LEVEL) {
+    const kind = await findOrCreateKindByCode(code);
     if (kind) pickKind(kind);
+  } else if (level === LEAF_LEVEL) {
+    await ensureChildrenLoaded(code);
+    if (isTerminalCode(code)) {
+      const kind = S.classifier.find(r => r.code === code);
+      if (kind) pickKind(kind);
+    }
   } else {
     await ensureChildrenLoaded(code);
   }
@@ -1238,7 +1301,7 @@ async function browseDrill(code, name, level) {
 function browseUp(idx) {
   S.browsePath = S.browsePath.slice(0, idx);
   // сбрасываем вид если ушли выше
-  if (!S.browsePath.length || S.browsePath[S.browsePath.length-1].level !== LEAF_LEVEL) {
+  if (!S.browsePath.length || !isTerminalCode(S.browsePath[S.browsePath.length-1].code)) {
     renderRegistered();
   }
   renderBrowse();
@@ -1266,7 +1329,7 @@ async function onBrowserKindInput() {
     const qAlt = stripCodePrefix(q);
     const useAlt = qAlt !== q;
     items = S.classifier.filter(r =>
-      r.level === LEAF_LEVEL &&
+      r.level === LEAF_LEVEL && isTerminalCode(r.code) &&
       (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
     ).slice(0, 30);
   }
@@ -1321,9 +1384,9 @@ function renderRegistered() {
   const body = document.getElementById('regBody');
   const count = document.getElementById('regCount');
 
-  // показываем только если выбран лист (метод выполнения)
+  // показываем только если выбран терминальный вид (метод без расширения или расширенный код)
   const path = S.browsePath;
-  if (!path.length || path[path.length-1].level !== LEAF_LEVEL) {
+  if (!path.length || !isTerminalCode(path[path.length-1].code)) {
     panel.style.display = 'none';
     return;
   }

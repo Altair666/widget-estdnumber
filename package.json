@@ -2,7 +2,7 @@
   "name": "@altair666/widget-estdnumber",
   "description": "БД номеров по классификатору ЕСТД",
   "homePage": "https://github.com/Altair666/widget-estdnumber",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "grist": {
     "name": "ESTD Number",
     "url": "https://altair666.github.io/widget-estdnumber/index.html",
