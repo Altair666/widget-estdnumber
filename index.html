@@ -145,6 +145,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-table tr:last-child td{border-bottom:none}
 .reg-table tr:hover td{background:var(--surf2)}
 .reg-table td.reg-dn{vertical-align:middle}
+.reg-sort-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:none;border-radius:3px;background:transparent;color:var(--tx3);cursor:pointer;padding:0;flex-shrink:0;transition:all .1s}
+.reg-sort-btn:hover{background:var(--grn-bg);color:var(--grn)}
 .reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap}
 .reg-name{font-size:12px;color:var(--tx)}
 .reg-use-dn{font-family:var(--mono);font-size:11px;color:var(--tx3)}
@@ -329,6 +331,7 @@ const S = {
   browserKindAcIdx: -1,
   // inline edit
   editing: null, // { rowId: number, mode: 'ref'|'compName', selUse: ... }
+  regSort: 'desc',   // 'asc' | 'desc' — сортировка по номеру ЕСТД
   // lazy classifier
   classifierMode: 'full',       // 'lazy' | 'full'
   classifierLoadedParents: null, // Set<string> — какие parent_code уже загружены
@@ -1177,6 +1180,11 @@ async function buildPathForKind(kind) {
 }
 
 /* ── Registered components table ── */
+function toggleRegSort() {
+  S.regSort = S.regSort === 'desc' ? 'asc' : 'desc';
+  renderRegistered();
+}
+
 function renderRegistered() {
   const panel = document.getElementById('pRegistered');
   const body = document.getElementById('regBody');
@@ -1196,7 +1204,10 @@ function renderRegistered() {
     const dn = c.estd_number || '';
     // Совпадение по сегменту: либо в начале "685621.", либо после точки ".685621."
     return dn.startsWith(kindCode + '.') || dn.includes('.' + kindCode + '.');
-  }).sort((a,b) => (a.estd_number||'').localeCompare(b.estd_number||''));
+  }).sort((a,b) => {
+    const cmp = (a.estd_number||'').localeCompare(b.estd_number||'');
+    return S.regSort === 'desc' ? -cmp : cmp;
+  });
 
   panel.style.display = 'block';
   count.textContent = items.length;
@@ -1225,7 +1236,16 @@ function renderRegistered() {
         <th rowspan="2" style="vertical-align:middle;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3)">Создан</th>
       </tr>
       <tr class="sub-header">
-        <th style="border-right:1px solid var(--brd)">Номер ЕСТД</th>
+        <th style="border-right:1px solid var(--brd)">
+          <span style="display:inline-flex;align-items:center;gap:4px">
+            Номер ЕСТД
+            <button class="reg-sort-btn" onclick="toggleRegSort()" title="${S.regSort==='desc'?'Сортировка: убывание (нажмите для возрастания)':'Сортировка: возрастание (нажмите для убывания)'}">
+              ${S.regSort==='desc'
+                ? `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 1v10M1 7l4 4 4-4"/></svg>`
+                : `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 11V1M1 5l4-4 4 4"/></svg>`}
+            </button>
+          </span>
+        </th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
         <th style="border-right:1px solid var(--brd)">Номер</th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
