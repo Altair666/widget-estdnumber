@@ -306,7 +306,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.11.7</footer>
+<footer class="ver-footer">v0.11.8</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -1236,15 +1236,13 @@ function renderRegistered() {
         <th rowspan="2" style="vertical-align:middle;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3)">Создан</th>
       </tr>
       <tr class="sub-header">
-        <th style="border-right:1px solid var(--brd)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-            <span>Номер ЕСТД</span>
-            <button class="reg-sort-btn" onclick="toggleRegSort()" title="${S.regSort==='desc'?'Сортировка: убывание (нажмите для возрастания)':'Сортировка: возрастание (нажмите для убывания)'}">
-              ${S.regSort==='desc'
-                ? `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 1v10M1 7l4 4 4-4"/></svg>`
-                : `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 11V1M1 5l4-4 4 4"/></svg>`}
-            </button>
-          </div>
+        <th style="border-right:1px solid var(--brd);position:relative">
+          Номер ЕСТД
+          <button class="reg-sort-btn" onclick="toggleRegSort()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%)" title="${S.regSort==='desc'?'Сортировка: убывание (нажмите для возрастания)':'Сортировка: возрастание (нажмите для убывания)'}">
+            ${S.regSort==='desc'
+              ? `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 1v10M1 7l4 4 4-4"/></svg>`
+              : `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 11V1M1 5l4-4 4 4"/></svg>`}
+          </button>
         </th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
         <th style="border-right:1px solid var(--brd)">Номер</th>
