@@ -1237,14 +1237,14 @@ function renderRegistered() {
       </tr>
       <tr class="sub-header">
         <th style="border-right:1px solid var(--brd)">
-          <span style="display:inline-flex;align-items:center;gap:4px">
-            Номер ЕСТД
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+            <span>Номер ЕСТД</span>
             <button class="reg-sort-btn" onclick="toggleRegSort()" title="${S.regSort==='desc'?'Сортировка: убывание (нажмите для возрастания)':'Сортировка: возрастание (нажмите для убывания)'}">
               ${S.regSort==='desc'
                 ? `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 1v10M1 7l4 4 4-4"/></svg>`
                 : `<svg width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 11V1M1 5l4-4 4 4"/></svg>`}
             </button>
-          </span>
+          </div>
         </th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
         <th style="border-right:1px solid var(--brd)">Номер</th>
