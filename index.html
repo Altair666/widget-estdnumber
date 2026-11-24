@@ -149,10 +149,22 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .badge-level{background:var(--surf3);color:var(--tx2)}
 
 /* ── REGISTERED TABLE ── */
-.reg-table{width:100%;border-collapse:collapse;font-size:12px}
-.reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2)}
-.reg-table th.group-header{border-bottom:2px solid var(--brd2);padding-bottom:2px;text-align:center}
-.reg-table .sub-header th{font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;border-bottom:1px solid var(--brd);background:var(--surf2);text-align:center;white-space:nowrap}
+/* Липкая шапка реестра как в widget-decimalnumber («ОК ЕСКД»): единственный
+   скролл-контейнер — .main, sticky-цепочка ph(0) → filter-bar(32) → thead(77/101).
+   НЕ давать #regBody/#pRegistered overflow, иначе sticky-контекст уедет внутрь. */
+#pRegistered{overflow:visible}
+#pRegistered>.ph{position:sticky;top:0;z-index:5}
+.reg-filter-bar{padding:8px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px;position:sticky;top:32px;z-index:4}
+.reg-filter-wrap{position:relative;flex:1}
+.reg-filter-input{width:100%;height:28px;border:1px solid var(--brd);border-radius:var(--r);padding:0 9px 0 28px;font-family:inherit;font-size:12px;background:#fff;outline:none;color:var(--tx)}
+.reg-filter-input:focus{border-color:#16b378}
+.reg-filter-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
+.reg-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+.reg-table th{position:sticky;top:77px;z-index:3;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;text-align:center;background:var(--surf2);white-space:nowrap;box-sizing:border-box;height:24px}
+.reg-table th::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--brd2)}
+.reg-table th[rowspan]{height:44px}
+.reg-table .sub-header th{top:101px;height:20px;font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;text-align:center;white-space:nowrap}
+.reg-table .sub-header th::after{height:1px;background:var(--brd)}
 .reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
 .reg-table tr:last-child td{border-bottom:none}
 .reg-table tr:hover td{background:var(--surf2)}
@@ -313,6 +325,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <span class="ph-title">Зарегистрированные компоненты</span>
         <span class="tag tag-blue" id="regCount"></span>
       </div>
+      <div class="reg-filter-bar">
+        <div class="reg-filter-wrap">
+          <svg class="reg-filter-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input class="reg-filter-input" id="regFilterInput" placeholder="Фильтр по номеру, наименованию, применению…" oninput="onRegFilterInput()">
+        </div>
+      </div>
       <div id="regBody"></div>
     </div>
 
@@ -324,7 +342,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.11.9</footer>
+<footer class="ver-footer">v0.11.10</footer>
 <div id="gTooltip"></div>
 
 <!-- Confirm modal (внутренний, вместо window.confirm) -->
@@ -362,6 +380,8 @@ const S = {
   // inline edit
   editing: null, // { rowId: number, mode: 'ref'|'compName', selUse: ... }
   regSort: 'desc',   // 'asc' | 'desc' — сортировка по номеру ЕСТД
+  regFilterQ: '',      // текст фильтра реестра (по номеру/наименованию/применению)
+  regFilterKind: null, // код вида, при котором фильтр установлен (сброс при смене)
   // lazy classifier
   classifierMode: 'full',       // 'lazy' | 'full'
   classifierLoadedParents: null, // Set<string> — какие parent_code уже загружены
@@ -1215,6 +1235,12 @@ function toggleRegSort() {
   renderRegistered();
 }
 
+function onRegFilterInput() {
+  const fi = document.getElementById('regFilterInput');
+  S.regFilterQ = fi ? fi.value.trim().toLowerCase() : '';
+  renderRegistered();
+}
+
 function renderRegistered() {
   const panel = document.getElementById('pRegistered');
   const body = document.getElementById('regBody');
@@ -1231,6 +1257,14 @@ function renderRegistered() {
   }
 
   const kindCode = path[path.length-1].code;
+  // сброс фильтра при смене вида
+  if (S.regFilterKind !== kindCode) {
+    S.regFilterKind = kindCode;
+    S.regFilterQ = '';
+    const fi = document.getElementById('regFilterInput');
+    if (fi) fi.value = '';
+  }
+
   const items = S.components.filter(c => {
     const dn = c.estd_number || '';
     // Совпадение по сегменту: либо в начале "685621.", либо после точки ".685621."
@@ -1240,11 +1274,20 @@ function renderRegistered() {
     return S.regSort === 'desc' ? -cmp : cmp;
   });
 
-  panel.style.display = 'block';
-  count.textContent = items.length;
+  const q = S.regFilterQ || '';
+  const shown = q ? items.filter(c =>
+    (c.estd_number||'').toLowerCase().includes(q) ||
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.primary_use_name||'').toLowerCase().includes(q)
+  ) : items;
 
-  if (!items.length) {
-    body.innerHTML = `<div class="reg-empty">Нет зарегистрированных компонентов для вида ${kindCode}</div>`;
+  panel.style.display = 'block';
+  count.textContent = shown.length;
+
+  if (!shown.length) {
+    body.innerHTML = items.length
+      ? '<div class="reg-empty">Ничего не найдено по фильтру</div>'
+      : `<div class="reg-empty">Нет зарегистрированных компонентов для вида ${kindCode}</div>`;
     return;
   }
 
@@ -1281,7 +1324,7 @@ function renderRegistered() {
       </tr>
     </thead>
     <tbody>
-      ${items.map((c, idx) => {
+      ${shown.map((c, idx) => {
         const useId = c.primary_use;
         const linked = (useId && useId > 0) ? byId[useId] : null;
         const author = c.created_by || '';
@@ -1295,7 +1338,7 @@ function renderRegistered() {
         const editingDN = editing && S.editing.mode === 'ref';
         const editingCompName = editing && S.editing.mode === 'compName';
         const editingUseName = editing && S.editing.mode === 'useName';
-        const dropUp = idx === items.length - 1;
+        const dropUp = idx === shown.length - 1;
 
         // Ячейка номера первичного применения (поиск/редактирование) и отдельная ячейка наименования (зеркало)
         let useDnCell, useNameCell;
