@@ -127,6 +127,18 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-add:hover{opacity:.88}
 .btn-add:active{transform:scale(.98)}
 .btn-add:disabled{opacity:.35;cursor:not-allowed}
+.btn-del-last{display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;color:var(--red);border:1px solid var(--red-brd);border-radius:var(--r);padding:9px 14px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;flex-shrink:0}
+.btn-del-last:hover:not(:disabled){background:var(--red-bg)}
+.btn-del-last:disabled{opacity:.35;cursor:not-allowed}
+.modal-overlay{position:fixed;inset:0;background:rgba(24,23,15,.35);z-index:500;display:flex;align-items:center;justify-content:center}
+.modal-box{background:var(--surf);border:1px solid var(--brd);border-radius:6px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:16px;width:min(360px,calc(100% - 40px))}
+.modal-title{font-size:12px;font-weight:600;color:var(--tx);margin-bottom:8px}
+.modal-text{font-family:var(--mono);font-size:12px;color:var(--tx2);word-break:break-word;margin-bottom:14px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.modal-btn{font-family:inherit;font-size:12px;font-weight:500;border-radius:var(--r);padding:7px 14px;cursor:pointer;border:1px solid var(--brd);background:var(--surf2);color:var(--tx);transition:background .1s}
+.modal-btn.cancel:hover{background:var(--surf3)}
+.modal-btn.danger{background:var(--red);border-color:var(--red);color:#fff}
+.modal-btn.danger:hover{opacity:.9}
 
 /* ── EMPTY / MISC ── */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px 0;color:var(--tx3);font-size:12px;text-align:center}
@@ -281,10 +293,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <span class="form-hint" id="useHint">Не выбрано</span>
         </div>
 
-        <button class="btn-add" id="btnAdd" disabled onclick="addComponent()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          Зарегистрировать номер
-        </button>
+        <div style="display:flex;gap:10px;align-items:stretch">
+          <button class="btn-add" id="btnAdd" style="flex:1" disabled onclick="addComponent()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Зарегистрировать номер
+          </button>
+          <button class="btn-del-last" id="btnDeleteLast" disabled onclick="deleteLastAdded()" title="Выберите вид в классификаторе">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            Удалить последний
+          </button>
+        </div>
 
       </div>
     </div>
@@ -306,8 +324,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.11.8</footer>
+<footer class="ver-footer">v0.11.9</footer>
 <div id="gTooltip"></div>
+
+<!-- Confirm modal (внутренний, вместо window.confirm) -->
+<div class="modal-overlay" id="modalOverlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-text" id="modalText"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal(false)">Отмена</button>
+      <button class="modal-btn danger" id="modalOkBtn" onclick="closeModal(true)">Удалить</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ═══════════════════════════════════
@@ -1189,6 +1219,7 @@ function renderRegistered() {
   const panel = document.getElementById('pRegistered');
   const body = document.getElementById('regBody');
   const count = document.getElementById('regCount');
+  updateDeleteBtn();
 
   // показываем только если выбран терминальный вид и не открыт список наименований операций
   const path = S.browsePath;
@@ -1665,6 +1696,7 @@ async function addComponent() {
 
   renderRegistered();
   renderSidebar();
+  updateDeleteBtn();
 
   try {
     if (typeof grist !== 'undefined') {
@@ -1717,6 +1749,71 @@ async function addComponent() {
     btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Зарегистрировать номер';
     alert('Ошибка при сохранении: ' + e.message);
   }
+}
+
+/* ═══════════════════════════════════
+   DELETE LAST ADDED COMPONENT
+   (последний по номеру ЕСТД в выбранном виде)
+═══════════════════════════════════ */
+function findLastInKind() {
+  const path = S.browsePath;
+  const lastNode = path.length ? path[path.length-1] : null;
+  const isTerminalNode = lastNode && (lastNode.level === LEAF_LEVEL || isTerminalCode(lastNode.code));
+  if (!lastNode || !isTerminalNode || (lastNode.level === LEAF_LEVEL && S.showExtPicker)) return null;
+  const kindCode = lastNode.code;
+  const items = S.components.filter(c => {
+    const dn = c.estd_number || '';
+    return dn.startsWith(kindCode + '.') || dn.includes('.' + kindCode + '.');
+  }).sort((a,b) => (a.estd_number||'').localeCompare(b.estd_number||''));
+  return items.length ? items[items.length-1] : null;
+}
+
+/* ── внутренняя модалка подтверждения (вместо window.confirm) ── */
+let modalCb = null;
+function showConfirm(title, text, onOk) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  modalCb = onOk;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+function closeModal(ok) {
+  document.getElementById('modalOverlay').style.display = 'none';
+  const cb = modalCb; modalCb = null;
+  if (ok && cb) cb();
+}
+
+function updateDeleteBtn() {
+  const btn = document.getElementById('btnDeleteLast');
+  if (!btn) return;
+  const last = findLastInKind();
+  btn.disabled = !last;
+  btn.title = last
+    ? `Удалить последний номер вида:\n${last.estd_number || ''} — ${last.name || ''}`
+    : 'Выберите вид в классификаторе';
+}
+
+function deleteLastAdded() {
+  const last = findLastInKind();
+  if (!last) return;
+  const label = `${last.estd_number || ''} — ${last.name || ''}`.trim();
+  showConfirm('Удалить последний номер вида?', label, async () => {
+    const idx = S.components.findIndex(c => c.id === last.id);
+    if (idx >= 0) S.components.splice(idx, 1);
+    S.recent = S.recent.filter(r => r.id !== last.id);
+    computeNextSerials();
+    renderAll();
+    renderRegistered();
+
+    try {
+      if (typeof grist !== 'undefined') {
+        await grist.selectedTable.destroy(last.id);
+        loadComponents();
+      }
+    } catch(e) {
+      alert('Ошибка при удалении: ' + e.message);
+      loadComponents();
+    }
+  });
 }
 
 /* ═══════════════════════════════════
